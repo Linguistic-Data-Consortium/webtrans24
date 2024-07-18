@@ -1,0 +1,2 @@
+class KitCheck < ApplicationRecord
+end

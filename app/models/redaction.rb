@@ -1,0 +1,2 @@
+class Redaction < ApplicationRecord
+end
