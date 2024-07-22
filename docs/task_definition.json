@@ -1,0 +1,136 @@
+{
+  "cpu": "1024",
+  "memory": "2048",
+  "family": "webtrans",
+  "executionRoleArn": "",
+  "taskRoleArn": "",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "",
+      "environment": [
+        {
+          "name": "DATABASE_HOST",
+          "value": ""
+        },
+        {
+          "name": "SMTP_USER",
+          "value": ""
+        },
+        {
+          "name": "SMTP_HOST",
+          "value": ""
+        },
+        {
+          "name": "SMTP_PORT",
+          "value": ""
+        },
+        {
+          "name": "POSTGRES_DB",
+          "value": ""
+        },
+        {
+          "name": "POSTGRES_USER",
+          "value": ""
+        },
+        {
+          "name": "PUBLIC_URL",
+          "value": ""
+        },
+        {
+          "name": "RAILS_ENV",
+          "value": "aws"
+        },
+        {
+          "name": "RACK_ENV",
+          "value": "aws"
+        },
+        {
+          "name": "RAILS_LOG_TO_STDOUT",
+          "value": "1"
+        },
+        {
+          "name": "RAILS_MAX_THREADS",
+          "value": "16"
+        },
+        {
+          "name": "RAILS_SERVE_STATIC_FILES",
+          "value": "1"
+        },
+        {
+          "name": "ACTIVE_STORAGE_BUCKET",
+          "value": ""
+        },
+        {
+          "name": "COGNITO_POOL_ID",
+          "value": ""
+        },
+        {
+          "name": "COGNITO_PROVIDER_NAME",
+          "value": ""
+        }
+      ],
+      "secrets": [
+        {
+          "name": "SMTP_PASSWORD",
+          "valueFrom": ""
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "valueFrom": ""
+        },
+        {
+          "name": "SECRET_KEY_BASE",
+          "valueFrom": ""
+        }
+      ],
+      "essential": true,
+      "dependsOn": [
+        {
+          "condition": "START",
+          "containerName": "redis"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webtrans",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "production"
+        }
+      },
+      "mountPoints": [],
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "startTimeout": 10
+    },
+    {
+      "essential": true,
+      "image": "redis",
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/webtrans",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "production"
+        }
+      },
+      "mountPoints": [],
+      "name": "redis",
+      "portMappings": [
+        {
+          "containerPort": 6379
+        }
+      ]
+    }
+  ],
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "volumes": []
+}
