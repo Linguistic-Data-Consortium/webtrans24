@@ -21,8 +21,9 @@ class CognitoTokenController < ApplicationController
       identityId: tmp[:identity_id],
       logins: { 'cognito-identity.amazonaws.com': tmp[:token] }
     }
+    region = ENV["AWS_REGION"]
     respond_to do |format|
-      format.json { render json: tok }
+      format.json { render json: { tok:, region: } }
     end
   end
 end
