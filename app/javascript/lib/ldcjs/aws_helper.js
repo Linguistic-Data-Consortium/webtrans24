@@ -4,7 +4,7 @@
 
 let f;
 
-const defaults = {region: 'us-east-1'};
+let defaults = {region: 'us-east-1'};
 let cognito;
 
 let credentials;
@@ -14,8 +14,10 @@ function refreshToken(x){
     f = x;
 s3 = fetch("/token", { method: "POST" })
   .then(res => res.json())
-  .then( t => {
-    let token = {...t};
+  .then( r => {
+    const { tok, region } = r;
+    let token = {...tok};
+    defaults = { region };
     if(!cognito) cognito = new f.CognitoIdentityClient({...defaults});
     token.client = cognito;
     credentials = f.fromCognitoIdentity(token);
@@ -34,7 +36,7 @@ const getTranscribeClient = () => {
 function getSignedUrlPromise(Bucket, Key){
   const params = { Bucket, Key };
   let cmd = new f.GetObjectCommand(params);
-  return s3.then( (s3) => f.getSignedUrl(s3, cmd, {}) );
+  return s3.then( (s3) => f.getSignedUrl(s3, cmd, { expiresIn: 3600 }) );
 }
 
 const listObjectsV2 = (Bucket) => {

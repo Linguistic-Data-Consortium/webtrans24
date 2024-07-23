@@ -54,10 +54,10 @@ function init(ldc){
     // ns.segments = ns.main;
     // ns.waveform.services = window.services_init();
     $('.Speaker').each(function(i, y) {
-      speakers.set($(y).data().value.value, true);
+      ldc.speakers.set($(y).data().value.value, true);
     });
     $('.Section').each(function(i, y) {
-      sections.set($(y).data().value.value, true);
+      ldc.sections.set($(y).data().value.value, true);
     });
     ns.main.update_segments();
 

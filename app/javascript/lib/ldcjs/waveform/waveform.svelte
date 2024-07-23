@@ -2472,10 +2472,12 @@
         if(debug) console.log(local_redactions);
     }
     let active = null;
+    let active_node_id = null;
     let last_active_segment;
     function set_active_transcript_line(id, dont_focus){
         let last = active;
         active = id;
+        if(id) active_node_id = index_segments_by_id.get(id).iid;
         last_active_segment = id;
         if(debug){
             console.log(`last: ${last}, active: ${active}`);
@@ -3708,9 +3710,7 @@
         let aactive = null;
         let aaactive = null;
         if(debug) console.log(active)
-        if (active && document.querySelectorAll(`#${active}`).length) {
-            aactive = String(ldc.$(`#${active}`).data().iid);
-        }
+        if(active_node_id !== null) aactive = String(active_node_id);
         let i;
         let j;
         let ref;
@@ -4253,7 +4253,10 @@
         if(t_timeout) clearTimeout(t_timeout);
         // if(ldc.nodes) transcription.nodes.get('Transcription').node_value.set( { value: value } );
         const f = () => { update_segments(); change_handle(); };
-        if(value != t_previous.get(iid)) change_value(iid, value, f);
+        if(value != t_previous.get(iid)){
+            change_value(iid, value, f);
+            t_previous.set(iid, value);
+        }
     }
     // if(t_readonly) t_value = x.text;
 
