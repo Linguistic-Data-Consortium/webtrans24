@@ -5,7 +5,7 @@ module AwsHelper
   
   def client
     # key, secret, region = ENV['BUCKET_CREDS'].split ','
-    region = 'us-east-1'
+    region = ENV['AWS_REGION']
     Aws::S3::Client.new region: region
   end
 

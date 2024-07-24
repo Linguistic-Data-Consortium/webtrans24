@@ -74,7 +74,7 @@ module WorkflowsHelper
   end
 
   def list_objects(existing:, bucket:)
-    @s3 = Aws::S3::Client.new region: 'us-east-1'
+    @s3 = Aws::S3::Client.new region: ENV['AWS_REGION']
     a = []
     list = true
     if bucket =~ /(.+)\/(.+)/
