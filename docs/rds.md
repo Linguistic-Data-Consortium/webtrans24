@@ -22,10 +22,10 @@ This guide describes how to use AWS Relational Database Service (RDS) to host a 
     * **Allocated storage** - enter `20`  
     * **Enable storage autoscaling** - uncheck (_optional_)
   * **Connectivity**
-  * **Virtual Private cloud** - Select a VPC for your database
-  * **Public Access** - Select `Yes`, but please [read this](#public-accessibility-and-security) to understand the choice
-  * _VPC security group_ - select `Create new`
-  * Enter a security group name, e.g., `webtrans-db-security-group'
+    * **Virtual Private cloud** - Select a VPC for your database
+    * **Public Access** - Select `Yes`, but please [read this](#public-accessibility-and-security) to understand the choice
+    * _VPC security group_ - select `Create new`
+    * Enter a security group name, e.g., `webtrans-db-security-group'
   * **Monitoring**
      The defaults are fine here, though I usually turn off `DevOps Guru`.
   * **Additional configuration**
