@@ -94,10 +94,6 @@ ENV BUN_INSTALL="/root/.bun"
 ENV PATH="$BUN_INSTALL/bin:$PATH"
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /ua /ua
-COPY shell/sshd_config /etc/ssh/sshd_config
-COPY shell/docker-entrypoint.sh /ua/docker-entrypoint.sh
-COPY shell/bashrc /root/.bashrc
-ADD shell/bin.tgz  /root/
 ADD https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem /root/.postgresql/root.crt
 WORKDIR /ua
 ENTRYPOINT ["./docker-entrypoint.sh"]
