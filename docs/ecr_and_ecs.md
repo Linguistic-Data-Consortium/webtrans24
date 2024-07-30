@@ -6,24 +6,28 @@ Elastic Container Service (ECS) is a managed platform for deploying Docker-compa
 
 ## How to
 
-### Create an ECS cluster
-
-Open the [Clusters](https://console.aws.amazon.com/ecs/v2/clusters) section of the ECS web console, then click the _Create cluster_ button at the upper right. Enter a  _Cluster name_, make sure that _AWS Fargate_ is checked in the _Infrastructure_ section, then click _Create_.
-
 ### Create a repository for images
 
-Open the _Repositories_ section of the [ECR console](https://console.aws.amazon.com/ecr/private-registry/repositories), then click the _Create repository_ button at the upper right. Enter a repository name, then click _Create repository_.  
+Open the __Repositories__ section of the [ECR web console](https://console.aws.amazon.com/ecr/private-registry/repositories) then click the __Create repository__ button at the upper right. Enter a repository name, then click __Create repository__.  
+
+Once the repository has been created, you can see it in the list of repositories; note the `URI` column has the URI for your repository, which you'll need to [build and push the image](#build-and-push-the-image)/
+
+### Create an ECS cluster
+
+Open the [Clusters](https://console.aws.amazon.com/ecs/v2/clusters) section of the ECS web console, then click the _Create cluster_ button at the upper right. Enter a cluster name , make sure that `AWS Fargate` is checked in the __Infrastructure__ section, then click __Create__.
 
 ### Build and push the image
 
-* Build the image  
-  TODO: link to other docs or whatever
-* If you haven't already, install and configure the [AWS CLI](https://aws.amazon.com/cli/)
-* Authenticate with the registry using the cli:
+In this section, `${region}` is your AWS region and `${repository_uri}` is the URI of the repository you [created earlier](#create-a-repository-for-images). `${registry_uri}` is the just the host name portion of `${repository_uri}` , e.g., if `${repository_uri}` is `123456789012.dkr.ecr.us-east-1.amazonaws.com/webtrans/app`, then `${registry_uri}` would be `123456789012.dkr.ecr.us-east-1.amazonaws.com`. `${image_uri}` is a string in the form `${repository_uri}:${tag}` where tag is a string that identifies a particular image in the repository. If `${tag}` is `prod`, then `${image_uri}` in this example would be `123456789012.dkr.ecr.us-east-1.amazonaws.com/webtrans/app:prod`
 
-```sh
-aws ecr get-login-password --region {region} | docker login --username AWS --password-stdin {aws_account_id}.dkr.ecr.{region}.amazonaws.com
-```
+* Make sure you've followed the instructions in [Local Installation](../README.md#local-installation) before continuing
+* Make sure you've installed and configured the [AWS CLI](https://aws.amazon.com/cli/)
+* Authenticate with the registry using the AWS CLI:  
+  `aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry_uri}`
+* Build the image:  
+  `docker build -t ${image_uri} .`
+* Push the image:  
+  `docker push ${image_uri}`
 
 ### Create and register an ECS task description
 
@@ -33,21 +37,21 @@ Edit the task description [template](task_description.json) to suit your deploym
 
 #### `executionRoleArn` and `taskRoleArn`
 
-**These are the ARNs for the roles that I haven't written the docs for just yet. stay tuned.**
+__These are the ARNs for the roles that I haven't written the docs for just yet. stay tuned.__
 
 #### `image`
 
-The URI of the webtrans image to run.  You can find this in the _Repositories_ section of the [ECR web console](https://console.aws.amazon.com/ecr/private-registry/repositories). Remember to include the image tag, e.g. `012345678901.dkr.ecr.us-east-2.amazonaws.com/webtrans/app:prod`.
+The URI of the webtrans image to run; this is the value of `${image_uri}` from the [Build and push image](#build-and-push-the-image) section.
 
 #### `environment`
 
-  This section is a list of `name`/`value` pairs environment variables that will be set in the container; take care to only change the `value`s.
+This section is a list of `name`/`value` pairs environment variables that will be set in the container; take care to only change the `value`s.
 
 * `ACTIVE_STORAGE_BUCKET` - the S3 bucket you're using for webtrans data
-* `COGNITO_POOL_ID` - the ID of the Cognito identity pool to use for WebTrans; see the detail page for the identity pool in the [](https://console.aws.amazon.com/cognito/v2/identity/identity-pools)
-* `COGNITO_PROVIDER_NAME` - this is the _Developer provider name_ we chose when [setting up Cognito](cognito.md)
-* `DATABASE_HOST` - your database hostname; if using RDS, this is the value labeled _Endpoint_ on the _Connectivity & security_ tab of the detail page for your db instance in the [RDS web console](https://console.aws.amazon.com/rds/home#databases:).
-* `SMTP_HOST` - the address of the SMTP server
+* `COGNITO_POOL_ID` - the ID of the Cognito identity pool to use for WebTrans; see the detail page for the identity pool in the [Cognito web console](https://console.aws.amazon.com/cognito/v2/identity/identity-pools)
+* `COGNITO_PROVIDER_NAME` - this is the developer provider name we chose when [setting up Cognito](cognito.md)
+* `DATABASE_HOST` - your database host name; if using RDS, this is the value labeled _Endpoint_ on the _Connectivity & security_ tab of the detail page for your db instance in the [RDS web console](https://console.aws.amazon.com/rds/home#databases:).
+* `SMTP_HOST` - the address of your SMTP server
 * `SMTP_PORT` - the port number to use on the SMTP server
 * `SMTP_USER` - the username WebTrans will use to send email
 * `POSTGRES_DB` - the name of the webtrans database
@@ -56,7 +60,7 @@ The URI of the webtrans image to run.  You can find this in the _Repositories_ s
 
 #### `secrets`
 
-  Like the `environment` section, this is a list of pairs that correspond to environment variables set in the container. Edit the `valueFrom` to be the ARNs for the [secrets](secrets.md) we set up earlier. There should be 3 secrets to configure:
+Like the `environment` section, this is a list of pairs that correspond to environment variables set in the container. Edit the `valueFrom` to be the ARNs for the [secrets](secrets.md) we set up earlier. There should be 3 secrets to configure:
 
 * `POSTGRES_PASSWORD`
 * `SMTP_PASSWORD`
@@ -64,7 +68,9 @@ The URI of the webtrans image to run.  You can find this in the _Repositories_ s
 
 #### Registering the task description
 
-After writing the task description, register the
+After writing the task description, register the task description with ECS.
+
+TODO: actually write this bit
 
 ## Create and start service
 
@@ -77,4 +83,5 @@ After writing the task description, register the
   * [Clusters](https://console.aws.amazon.com/ecs/v2/clusters)
   * [Task Definitions](https://console.aws.amazon.com/ecs/v2/task-definitions)
 * [ECR User Guide](https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html)
+  * [Private registry authentication in Amazon ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html)
 * [ECR Repositories](https://console.aws.amazon.com/ecr/private-registry/repositories)
