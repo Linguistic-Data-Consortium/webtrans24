@@ -1,6 +1,6 @@
 {
   "all": {
-    "viteBinPath": "bin/shims/vite",
+    "viteBinPath": "node_modules/.bin/vite",
     "sourceCodeDir": "app/javascript",
     "watchAdditionalPaths": []
   },
