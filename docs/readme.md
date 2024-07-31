@@ -4,25 +4,14 @@ WebTrans is a web-based application for transcribing recorded speech.
 
 ### Installation
 
-* Steps
-  * [Create Cognito identity pool](cognito.md)
-  * [Create RDS database](rds.md)
-  * [Create and store secrets](secrets.md)
-  * [set up ecr and ecs](ecr_and_ecs.md)
-  * [configure cors for s3](cors.md)
-  * [set up elb and acm](elb_and_acm.md)
-* securing
-  * security groups
-    * db security group
-  * secrets manager
-    * secret rotation
-    * restarting the app
+* [Create Cognito identity pool](cognito.md)
+* [Create RDS database](rds.md)
+* [Create and store secrets](secrets.md)
+* [Set up ECR and ECS](ecr_and_ecs.md)
+* Set up ELB and ACM (coming soon)
+* [Configure CORS for S3](cors.md)
 
 ### Troubleshooting
-
-TODO
-
-#### Sorting Out Problems with Roles and Policies
 
 TODO
 
