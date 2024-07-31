@@ -1,6 +1,6 @@
-require_relative '../../lib/loggable'
+# require_relative '../../lib/loggable'
 
-require_relative '../../lib/ldc/annotation/kit_creator'
+# require_relative '../../lib/ldc/annotation/kit_creator'
 class KitBatch < ActiveRecord::Base
   # attr_accessible :user_id, :task_id
   belongs_to :user, optional: true
@@ -14,21 +14,21 @@ class KitBatch < ActiveRecord::Base
 
   scope :sorted, -> { order('name ASC') }
 
-  include Loggable
+  # include Loggable
 
   def user_name
     user ? user.name : ''
   end
+
   def task_name
     task ? task.name : ''
   end
+
   def created
     created_by ? created_by_user.name : ''
   end
 
-  def file
-    @file
-  end
+  attr_reader :file
 
   def file=(f)
     self.kit_creations = f.read
@@ -36,7 +36,7 @@ class KitBatch < ActiveRecord::Base
 
   def multiples_count
     counts = [@multiples_count, parallel_multiples, sequential_multiples]
-    counts.find { |c| c && c >1 } || 1
+    counts.find { |c| c && c > 1 } || 1
   end
 
   def multiples_count=(c)
@@ -49,9 +49,9 @@ class KitBatch < ActiveRecord::Base
     if @dual_mode
       @dual_mode
     elsif parallel_multiples && parallel_multiples > 1
-      "parallel"
+      'parallel'
     else
-      "sequential"
+      'sequential'
     end
   end
 
@@ -63,7 +63,7 @@ class KitBatch < ActiveRecord::Base
 
   def assign(task_user)
     update(user_id: task_user.user_id, task_id: task_user.task_id)
-    kits.update_all( user_id: task_user.user_id )
+    kits.update_all(user_id: task_user.user_id)
   end
 
   def create_kits
@@ -80,113 +80,105 @@ class KitBatch < ActiveRecord::Base
   end
 
   def process
-    begin
-      input = kit_creations
-      return "empty input\n" if input.size == 0
+    input = kit_creations
+    return "empty input\n" if input.size == 0
 
-      if creation_type =~ /(document|multi_post|ltf|file|kit|audio|speaker|manifest|data_set)/
-        type = creation_type
-      else
-        return "couldn't determine type\n"
-      end
-
-      return "couldn't determine task_id\n" unless task_id
-
-      kc_class = kit_creator
-
-      if LDC::Annotation.const_defined? kc_class
-        kc_class = LDC::Annotation.const_get kc_class
-      else
-        return "bad kit creator: #{kc_class}\n"
-      end
-
-      begin
-        kc = kc_class.new task_id
-      rescue => e
-        puts e
-        puts e.backtrace.to_s
-        return "error when creating KitCreator\n"
-      end
-
-      kc.state = state || 'unassigned'
-
-      user_id_first = user_id
-
-      kc.created_by = created_by
-      kc.log_init 'kits_scanner2.log'
-      begin
-        kc.process(input: input, user_id_first: user_id_first, type: type, task_id: task_id, kc_class: kc_class, kb: self)
-      rescue KitCreationError => e
-        puts e.to_s
-        puts e.backtrace.to_s
-        update(message: e.to_s)
-      rescue => e
-        puts e.to_s
-        puts e.backtrace.to_s
-        input.update_all( status: :failed )
-      end
-      'done'
-    rescue Exception => e
-      ([ e ] + e.backtrace).map(&:to_s).join("\n") + "\n"
+    unless creation_type =~ /(document|multi_post|ltf|file|kit|audio|speaker|manifest|data_set)/
+      return "couldn't determine type\n"
     end
+
+    type = creation_type
+
+    return "couldn't determine task_id\n" unless task_id
+
+    kc_class = kit_creator
+
+    return "bad kit creator: #{kc_class}\n" unless LDC::Annotation.const_defined? kc_class
+
+    kc_class = LDC::Annotation.const_get kc_class
+
+    begin
+      kc = kc_class.new task_id
+    rescue StandardError => e
+      puts e
+      puts e.backtrace
+      return "error when creating KitCreator\n"
+    end
+
+    kc.state = state || 'unassigned'
+
+    user_id_first = user_id
+
+    kc.created_by = created_by
+    kc.log_init 'kits_scanner2.log'
+    begin
+      kc.process(input:, user_id_first:, type:, task_id:, kc_class:,
+                 kb: self)
+    rescue KitCreationError => e
+      puts e
+      puts e.backtrace
+      update(message: e.to_s)
+    rescue StandardError => e
+      puts e
+      puts e.backtrace
+      input.update_all(status: :failed)
+    end
+    'done'
+  rescue Exception => e
+    ([e] + e.backtrace).map(&:to_s).join("\n") + "\n"
   end
 
   def process2
+    input = kit_creations
+    return "empty input\n" if input.size == 0
+
+    return "couldn't determine type\n" unless creation_type =~ /(data_set|document|uid)/
+
+    type = creation_type
+
+    return "couldn't determine task_id\n" unless task_id
+
+    kc_class = kit_creator
+
+    return "bad kit creator: #{kc_class}\n" unless LDC::Annotation.const_defined? kc_class
+
+    kc_class = LDC::Annotation.const_get kc_class
+
     begin
-      input = kit_creations
-      return "empty input\n" if input.size == 0
-
-      if creation_type =~ /(data_set|document|uid)/
-        type = creation_type
-      else
-        return "couldn't determine type\n"
-      end
-
-      return "couldn't determine task_id\n" unless task_id
-
-      kc_class = kit_creator
-
-      if LDC::Annotation.const_defined? kc_class
-        kc_class = LDC::Annotation.const_get kc_class
-      else
-        return "bad kit creator: #{kc_class}\n"
-      end
-
-      begin
-        kc = kc_class.new task_id
-      rescue => e
-        puts e
-        puts e.backtrace.to_s
-        return "error when creating KitCreator\n" + e.to_s
-      end
-
-      # kc.state = state || 'unassigned'
-      kc.state = 'unassigned'
-
-      user_id_first = user_id
-
-      kc.created_by = created_by
-      begin
-        kc.process(input: input, user_id_first: user_id_first, type: type, task_id: task_id, kc_class: kc_class, kb: self)
-      rescue KitCreationError => e
-        puts e.to_s
-        puts e.backtrace.to_s
-        update(message: e.to_s)
-      rescue => e
-        puts e.to_s
-        puts e.backtrace.to_s
-        input.update_all( status: :failed )
-      end
-      'done'
-    rescue Exception => e
-      ([ e ] + e.backtrace).map(&:to_s).join("\n") + "\n"
+      kc = kc_class.new task_id
+    rescue StandardError => e
+      puts e
+      puts e.backtrace
+      return "error when creating KitCreator\n" + e.to_s
     end
+
+    # kc.state = state || 'unassigned'
+    kc.state = 'unassigned'
+
+    user_id_first = user_id
+
+    kc.created_by = created_by
+    begin
+      kc.process(input:, user_id_first:, type:, task_id:, kc_class:,
+                 kb: self)
+    rescue KitCreationError => e
+      puts e
+      puts e.backtrace
+      update(message: e.to_s)
+    rescue StandardError => e
+      puts e
+      puts e.backtrace
+      input.update_all(status: :failed)
+    end
+    'done'
+  rescue Exception => e
+    ([e] + e.backtrace).map(&:to_s).join("\n") + "\n"
   end
 
   private
 
   def set_dual_mode
-    if dual_mode == "parallel"
+    if dual_mode == 'parallel'
       puts "Setting parallel multiples to #{multiples_count}"
       self.parallel_multiples = multiples_count
       self.sequential_multiples = 1
