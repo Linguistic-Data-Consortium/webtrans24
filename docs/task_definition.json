@@ -14,7 +14,11 @@
           "value": ""
         },
         {
-          "name": "SMTP_USER",
+          "name": "PUBLIC_URL",
+          "value": ""
+        },
+        {
+          "name": "FROM_EMAIL",
           "value": ""
         },
         {
@@ -26,15 +30,15 @@
           "value": ""
         },
         {
+          "name": "SMTP_USER",
+          "value": ""
+        },
+        {
           "name": "POSTGRES_DB",
           "value": ""
         },
         {
           "name": "POSTGRES_USER",
-          "value": ""
-        },
-        {
-          "name": "PUBLIC_URL",
           "value": ""
         },
         {

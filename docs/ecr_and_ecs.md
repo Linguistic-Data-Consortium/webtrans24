@@ -51,12 +51,13 @@ This section is a list of `name`/`value` pairs environment variables that will b
 * `COGNITO_POOL_ID` - the ID of the Cognito identity pool to use for WebTrans; see the detail page for the identity pool in the [Cognito web console](https://console.aws.amazon.com/cognito/v2/identity/identity-pools)
 * `COGNITO_PROVIDER_NAME` - this is the developer provider name we chose when [setting up Cognito](cognito.md)
 * `DATABASE_HOST` - your database host name; if using RDS, this is the value labeled _Endpoint_ on the _Connectivity & security_ tab of the detail page for your db instance in the [RDS web console](https://console.aws.amazon.com/rds/home#databases:).
+* `PUBLIC_URL`- the hostname where you'll be serving the website, e.g. `webtrans.example.edu`
+* `FROM_EMAIL` - the address address email will be from
 * `SMTP_HOST` - the address of your SMTP server
 * `SMTP_PORT` - the port number to use on the SMTP server
 * `SMTP_USER` - the username WebTrans will use to send email
 * `POSTGRES_DB` - the name of the webtrans database
 * `POSTGRES_USER` - the username used to connect to the database
-* `PUBLIC_URL`- the hostname where you'll be serving the website, e.g. `webtrans.example.edu`
 
 #### `secrets`
 
@@ -68,9 +69,11 @@ Like the `environment` section, this is a list of pairs that correspond to envir
 
 #### Registering the task description
 
-After writing the task description, register the task description with ECS.
-
-TODO: actually write this bit
+* Go to the __Task definitions__ section of the [ECS web console](https://console.aws.amazon.com/ecs/v2/task-definitions)
+* From the __Create new task definition__ drop down list, select `Create new task definition with JSON`
+  * Completely delete the contents of the task definition textarea
+  * Paste in the contents of the task definition edited above
+* Click __Create__
 
 ## Create and start service
 
