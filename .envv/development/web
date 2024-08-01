@@ -1,1 +1,2 @@
 DATABASE_HOST=database
+FROM_EMAIL=noreply@example.edu
