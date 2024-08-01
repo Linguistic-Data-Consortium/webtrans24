@@ -76,6 +76,8 @@ Like the `environment` section, this is a list of pairs that correspond to envir
 
 ## Create and start service
 
+__NOTE:__ this section isn't done yet
+
 * Open the [Clusters](https://console.aws.amazon.com/ecs/v2/clusters) section of the ECS web console, then click the name of the cluster [you created earlier](#create-an-ecs-cluster)
 * In the __Services__ tab, click __Create__
   * Select `Launch type` in the __Environment__ section
@@ -92,4 +94,3 @@ Like the `environment` section, this is a list of pairs that correspond to envir
 * [ECR User Guide](https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html)
   * [Private registry authentication in Amazon ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html)
 * [ECR Repositories](https://console.aws.amazon.com/ecr/private-registry/repositories)
-

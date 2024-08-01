@@ -4,7 +4,7 @@ In order to load audio from S3, we need to configure the [Cross-Origin Resource 
 
 ## Howto
 
-Go to the [Buckets](https://console.aws.amazon.com/s3/buckets) section of the S3 web console, find the bucket you use for your WebTrans data, and click the name to bring up the detail page. Click on the _Permissions_ tab and go to the _Cross-origin resource sharing_ section at the very bottom of the page. Click the _Edit_ button, and paste the following into the dialog that appears:
+Go to the __Buckets__ section of [S3 web console](https://console.aws.amazon.com/s3/buckets), then find the bucket you use for your WebTrans data and click the name to bring up the detail page. Click on the __Permissions__ tab and go to the __Cross-origin resource sharing__ section at the very bottom of the page. Click the __Edit__ button, and paste the following into the dialog that appears:
 
 ```json
 [
@@ -30,7 +30,7 @@ Go to the [Buckets](https://console.aws.amazon.com/s3/buckets) section of the S3
 ]
 ```
 
-Click `Save changes`.
+Click __Save changes__
 
 ## Notes
 
