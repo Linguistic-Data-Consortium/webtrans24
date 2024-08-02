@@ -12,7 +12,7 @@ WebTrans uses Cognito to authorize access to data stored in S3
 * Click the __Create identity pool___ button in the upper right hand corner of the page
 * Follow the identity pool creation workflow:
   * Step 1 - Select __Authenticated access__; a set of checkboxes labeled __Authenticated identity sources__ will appear. Select only __Custom developer provider__
-  * Step 2 - Select __Create a new IAM role__ and enter a name in the __IAM role name__ text box
+  * Step 2 - Select __Create a new IAM role__ and enter a name in the __IAM role name__ text box  
   * Step 3 - Enter a name in __Developer provider name__
   * Step 4 - Enter a name in __Identity pool name__ section; make sure the __Activate basic flow__ checkbox is NOT checked.
   * Step 5 - Confirm that information is right, then click __Create identity pool__
@@ -24,15 +24,21 @@ WebTrans uses Cognito to authorize access to data stored in S3
 * In the __Permissions__ section of the role detail page, select `Create inline policy` from the __Add permissions__ drop down
 * Follow the create policy workflow
   * Step 1
-    * Select `S3` from the __Service__ dropdown
+    * Select `S3` from the __Service__ drop down list
     * In the __Actions allowed__ section that appears, select `ListAllMyBuckets` and `ListBucket` in the __List__ subsection, and `GetObject` under the __Read__ subsection
     * After selecting the permissions, the __Resources__ section wil be enabled; make sure the __Specific__ radio button is selected.
     * There should be two links titled __Add ARNs__, one in the __bucket__ subsection and one in the __object__ subsection.
-      * bucket - in the __Resource bucket name__ textbox, enter the name of the bucket you'll be using to store your data
-      * object - in the __Resources bucket name__ textbox, enter the bucket name; select the __Any object name__ checkbox next to the __Resource object name__ textbox
+      * bucket - in the __Resource bucket name__ text box, enter the name of the bucket you'll be using to store your data
+      * object - in the __Resources bucket name__ text box, enter the bucket name; select the __Any object name__ checkbox next to the __Resource object name__ text box
   * Step 2
-    * enter a name in the __Policy Name__ textbox and click __Create policy__
-  
+    * enter a name in the __Policy Name__ text box and click __Create policy__
+
+Note: if the objects in your WebTrans S3 bucket are encrypted with a customer managed KMS key, add one more permission in Step 1:
+
+* Select `KMS` from the __Service__ drop down list `Decrypt` under the __Write__ subsection
+* In the __Resources__ section, __Add ARNs__
+* Enter the bucket key's ARN in the __Resource ARN__ text box, then click __Add ARNs__
+
 ### Configure WebTrans
 
 NOTE: the file paths below are all relative to the directory into which you cloned Webtrans
