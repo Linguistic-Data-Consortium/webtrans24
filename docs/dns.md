@@ -8,13 +8,8 @@ Domain Name System (DNS) is a service that maps internet host names to network a
 
 ### Set up a hosted zone
 
-A hosted zone is a domain for which Route53 is the authoritative DNS server.
-
-This is still incomplete
-
 * [Instructions](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/creating-migrating.html) for delegating a subdomain to Route53
-* Find/write instructions for registering a domain and setting up Route53's NS/SOA records
-  * I think they might automagicaly handle SOA
+* You could also register a domain and use Route53 for DNS. For more information, see the link to the AWS docs at the bottom of the page.
 
 ## Other resources
 
