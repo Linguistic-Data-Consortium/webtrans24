@@ -76,15 +76,29 @@ Like the `environment` section, this is a list of pairs that correspond to envir
 
 ## Create and start service
 
-__NOTE:__ this section isn't done yet
-
 * Open the [Clusters](https://console.aws.amazon.com/ecs/v2/clusters) section of the ECS web console, then click the name of the cluster [you created earlier](#create-an-ecs-cluster)
-* In the __Services__ tab, click __Create__
-  * Select `Launch type` in the __Environment__ section
-  * In the  __Deployment configuration__ section
-    * Select `webtrans` from the __Family__ drop down list
-    * Enter a service name
-  
+* In the __Services__ tab, click __Create__, then follow the workflow
+  * In the __Deployment configuration__ section
+    * Select __Launch type__ in the __Environment__ section
+    * In the  __Deployment configuration__ section
+      * Select `webtrans` from the __Family__ drop down list
+      * Enter a service name
+  * In the __Networking__ section
+    * Select the VPC you're deploying to
+    * In the __Subnets__ subsection, ensure that only subnets labeled `public` are selected, and remove ones that aren't public
+    * Select __Use an existing security group__
+    * Remove any pre-selected security groups
+    * Select the application security group you [created earlier](elb_and_acm.md#create-application-security-group)
+    * Make sure __Public IP__ is turned on[^ecs-public-ip]
+  * In the __Load balancing__ section
+    * Select `Application load balancer` from __Load balancer type__ drop down list
+    * Make sure the `app` container is selected in the __Container__ drop down list
+    * Select __Use an existing load balancer__
+    * Select the load balancer you [previously created](elb_and_acm.md#create-a-load-balancer)
+    * Select __Use an existing listener__, then choose `443:HTTPS`
+    * Select __Use an existing target group__, then choose the target group you [previously created](elb_and_acm.md#create-a-target-group)
+  * Click __Create__
+
 ## External links
 
 * [ECS Developer Guide](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html)
@@ -94,3 +108,5 @@ __NOTE:__ this section isn't done yet
 * [ECR User Guide](https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html)
   * [Private registry authentication in Amazon ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html)
 * [ECR Repositories](https://console.aws.amazon.com/ecr/private-registry/repositories)
+
+[^ecs-public-ip]: The public IP is necessary to allow the service to access public AWS endpoints for API calls. This can be avoided, though, through the use of [PrivateLink VPC endpoints](https://docs.aws.amazon.com/vpc/latest/privatelink/create-interface-endpoint.html)
