@@ -74,6 +74,12 @@ Like the `environment` section, this is a list of pairs that correspond to envir
   * Paste in the contents of the task definition edited above
 * Click __Create__
 
+## Create the log group
+
+* Go to the __Log groups__ section of the [CloudWatch web console](https://console.aws.amazon.com/cloudwatch/home#logsV2:log-groups) and click the __Create log group__ button
+* Under __Log group name__ enter `/ecs/webtrans`
+* Click __Create__
+
 ## Create and start service
 
 * Open the [Clusters](https://console.aws.amazon.com/ecs/v2/clusters) section of the ECS web console, then click the name of the cluster [you created earlier](#create-an-ecs-cluster)
