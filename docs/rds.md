@@ -62,7 +62,7 @@ After creating the WebTrans database, you need to configure the database for Web
 
 By default, the new security group created with the RDS instance should traffic from your IP (that is, the one from which you did the setup). To allow the deployed app to access the database, you'll need to adjust the security group rules to allow hosts in your VPC to reach the database.
 
-* Go to the __Subnets__ section of the [EC2 web console](https://console.aws.amazon.com/ec2/home#Subnets:)
+* Go to the __Subnets__ section of the [VPC web console](https://console.aws.amazon.com/vpcconsole/home#subnets)
   * Make note of the subnet CIDRs for your VPC
     * note that the list has all subnets for your account, regardless of VPC; make sure the subnet addresses are for the right VPC
 * Go to the __Security groups__  section of the [EC2 web console](https://console.aws.amazon.com/ec2/home#SecurityGroups:) and click the `Security group ID` of the security group you created while setting RDS
