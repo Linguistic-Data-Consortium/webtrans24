@@ -48,7 +48,7 @@ Elastic Load Balancer (ELB) is an AWS service is a managed load balancer that we
       * Select `HTTPS` from the __Type__ drop down list
       * Select `Anywhere-IPv4` from the __Source__ drop down list
   * __Outbound rules__
-    There should be an automatically added outbound rule with `All traffic` selected in __Type__ and `Custom` selected for __Destination__. Leave it as is.
+    There should be an automatically added outbound rule with `All traffic` selected in __Type__ and `Custom` selected for __Destination__
     * Click __Delete__ next to the default outbound
     * Click __Add rule__
       * Select `Custom TCP` form the __Type__ drop down list
