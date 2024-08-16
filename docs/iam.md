@@ -1,12 +1,6 @@
-# Establishing roles and policies for WebTrans
+# Set up IAM roles
 
-## Roles
-
-IAM roles are a bit like users in that they can be granted access to AWS resources through policies. Unlike users, though, they don't have the ability to log in/generate permanent access keys; roles are "assumed" by users and services, allowing them to perform actions using the role's permissions.
-
-### Cognito role
-
-This role is used by front end code, primarily to permit access to data stored in S3. This role and its associated permissions were configured during [Cognito](congito.md) setup.
+IAM roles are a bit like users in that they can be granted access to AWS resources through policies. Unlike users, though, they don't have the ability to log in/generate permanent access keys; roles are "assumed" by users and services, allowing them to perform actions using the role's permissions. We will set up 2 roles that will allow [ECS](ecr_and_ecs.md) to run services on our behalf.
 
 ### ECS task execution role
 
@@ -76,4 +70,3 @@ This the role is used by WebTrans to use AWS services as part of the application
   * Click **Next**, give the policy a name and then click **Create policy**.
 
 ## Notes
-

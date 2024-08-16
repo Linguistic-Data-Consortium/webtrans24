@@ -12,6 +12,7 @@ This guide covers how to deploy an instance of WebTrans on AWS.
 * [Set up email](dns.md)
 * [Create and store secrets](secrets.md)
 * [Set up ELB and ACM](elb_and_acm.md)
+* [Set up roles in IAM](iam.md)
 * [Set up ECR and ECS](ecr_and_ecs.md)
 * [Configure CORS for S3](cors.md)
 
