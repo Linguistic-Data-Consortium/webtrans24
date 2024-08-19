@@ -33,7 +33,7 @@ Elastic Load Balancer (ELB) is an AWS service is a managed load balancer that we
 
 ### Create application security group
 
-* Go to the __Security Groups___ section of the [EC2 web console](https://console.aws.amazon.com/ec2/home#SecurityGroups:), then click __Create security group__
+* Go to the __Security Groups__ section of the [EC2 web console](https://console.aws.amazon.com/ec2/home#SecurityGroups:), then click __Create security group__
 * Configure the new security group
   * __Basic details__
     * Enter a name in __Security group name__
@@ -42,19 +42,16 @@ Elastic Load Balancer (ELB) is an AWS service is a managed load balancer that we
   * __Inbound rules__  
     * Delete the automatically added inbound rule
     * Click __Add rule__
-      * Select `HTTP` from the __Type__ drop down list
-      * Select `Anywhere-IPv4` from the __Source__ drop down list
-    * Click __Add rule__
-      * Select `HTTPS` from the __Type__ drop down list
-      * Select `Anywhere-IPv4` from the __Source__ drop down list
-  * __Outbound rules__
-    There should be an automatically added outbound rule with `All traffic` selected in __Type__ and `Custom` selected for __Destination__
-    * Click __Delete__ next to the default outbound
-    * Click __Add rule__
       * Select `Custom TCP` form the __Type__ drop down list
       * Enter `3000` in the __Port range__ text box
       * Select `Custom` from the __Destination__ drop down list
       * Click the text box next to the __Source__ drop down list, scroll to the __Security Groups__ section, then choose the load balancer security group you created earlier.
+  * __Outbound rules__
+    There should be an automatically added outbound rule with `All traffic` selected in __Type__ and `Custom` selected for __Destination__
+    * Click __Delete__ next to the default outbound
+    * Click __Add rule__
+      * Select `HTTPS` form the __Type__ drop down list
+      * Select `Anywhere-IPv4` from the __Destination__ drop down list
     * Click __Add rule__
       * Select `PostgreSQL` form the __Type__ drop down list
       * Select `Custom` from the __Destination__ drop down list
