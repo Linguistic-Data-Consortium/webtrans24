@@ -43,3 +43,7 @@ The origins should probably be locked down a bit. For example, if the public fac
 ```
 
 would permit requests from a local development instance, as well as the production site. It might be good to specify a list of `AllowedHeaders`, too.
+
+### See also
+
+* [Using CORS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/cors.html) in the S3 documentation
