@@ -94,7 +94,7 @@ ENV BUN_INSTALL="/root/.bun"
 ENV PATH="$BUN_INSTALL/bin:$PATH"
 COPY --from=build "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --from=build /ua /ua
-ADD https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem /root/.postgresql/root.crt
+ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /root/.postgresql/root.crt
 WORKDIR /ua
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD bundle exec bin/rails s -b 0.0.0.0 
