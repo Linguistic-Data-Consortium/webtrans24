@@ -16,8 +16,7 @@ Go to the __Buckets__ section of [S3 web console](https://console.aws.amazon.com
             "GET",
             "PUT",
             "POST",
-            "HEAD",
-            "OPTIONS"
+            "HEAD
         ],
         "AllowedOrigins": [
             "*",
