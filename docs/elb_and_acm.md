@@ -2,7 +2,7 @@
 
 ## Overview
 
-Elastic Load Balancer (ELB) is an AWS service is a managed load balancer that we'll use to handle public web traffic and TLS termination. AWS Certificate Manager (ACM) is a secure SSL/TLS certificate management service that integrates with ELB.
+Elastic Load Balancer (ELB) is an AWS service for a managed load balancer that we'll use to handle public web traffic and TLS termination. AWS Certificate Manager (ACM) is a secure SSL/TLS certificate management service that integrates with ELB.
 
 ## How To
 
