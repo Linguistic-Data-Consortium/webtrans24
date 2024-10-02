@@ -9,7 +9,7 @@ This guide covers how to deploy an instance of WebTrans on AWS.
 * [Create Cognito identity pool](cognito.md)
 * [Create RDS database](rds.md)
 * [Set up DNS](dns.md)
-* [Set up email](dns.md)
+* [Set up email](email.md)
 * [Create and store secrets](secrets.md)
 * [Set up ELB and ACM](elb_and_acm.md)
 * [Set up roles in IAM](iam.md)
