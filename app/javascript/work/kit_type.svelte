@@ -1,22 +1,39 @@
 <script>
+    import { preventDefault } from 'svelte/legacy';
+
     import InputText from './input_text.svelte'
     import InputSelect from './input_select.svelte'
     import InputCheckbox from './input_checkbox.svelte'
-    export let admin = false;
-    export let lead_annotator = false;
-    let unused = admin && lead_annotator;
-    export let kit_type_id;
 
-    export let id;
-    export let name;
-    export let node_class_id;
-    export let node_classes;
-    // export let feature_files;
-    export let constraints;
-    export let features;
+    
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [admin]
+     * @property {boolean} [lead_annotator]
+     * @property {any} kit_type_id
+     * @property {any} id
+     * @property {any} name
+     * @property {any} node_class_id
+     * @property {any} node_classes
+     * @property {any} constraints - export let feature_files;
+     * @property {any} features
+     */
+
+    /** @type {Props} */
+    let {
+        admin = false,
+        lead_annotator = false,
+        kit_type_id,
+        id,
+        name,
+        node_class_id,
+        node_classes,
+        constraints,
+        features
+    } = $props();
 
     let url = `/kit_types/${kit_type_id}`;
-    let node_class;
+    let node_class = $state();
     for(let x of node_classes){
         if(x.id == node_class_id){
             node_class = x;
@@ -24,7 +41,7 @@
         }
     }
 
-    let constraintb = {};
+    let constraintb = $state({});
     for(let x of features){
         if(x.name == x.value){
             constraintb[x.name] = constraints[x.name] == x.name;
@@ -40,7 +57,7 @@
 
 <div class="w-1/2 mx-auto">
     <div>ID: {id}</div>
-    <form on:submit|preventDefault={()=>null}>
+    <form onsubmit={preventDefault(()=>null)}>
         <InputText {url} label=Name key=name value={name} />
         <InputSelect {url} label=Namespace key="node_class_id" value={node_class} values={node_classes} att=name />
         {#each features as x}

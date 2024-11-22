@@ -4,17 +4,19 @@
     import { getp } from '../getp';
     import { btn } from '../work/buttons';
     import { active_docid } from './stores';
-    export let ldc;
+    let { ldc } = $props();
     const permissions = ldc.permissions;
     const constraint_export_transcript = ldc.get_constraint('export_transcript');
     const constraint_export_transcript_to_task_admin = ldc.get_constraint('export_transcript_to_task_admin');
-    const constraint_import_transcript_auto = ldc.get_constraint('export_transcript');
+    const constraint_import_transcript = ldc.get_constraint('import_transcript');
+    const constraint_import_transcript_auto = ldc.get_constraint('import_transcript_auto');
     const constraint_rtl = ldc.get_constraint('rtl');
     const constraint_speakers = ldc.get_constraint('speakers');
     const constraint_sections = ldc.get_constraint('sections');
     const constraint_section_order_forced = ldc.get_constraint('section_order_forced');
     const constraint_add_asr_segments = ldc.get_constraint('add_asr_segments');
-    let source_uid;
+    const constraint_asr_korean = ldc.get_constraint('asr_korean');
+    let source_uid = $state();
     const waveform = {
         wave_audio: {},
         play_head: 0,
@@ -24,8 +26,9 @@
     // ns.waveform = waveform;
     const redact = ldc.obj2.task_meta.redact;
     const xlass_def_id = ldc.obj2.xlass_def_id;
-    let w;
-    onMount( () => ldc.wc = w );
+    let w = $state();
+    setInterval(() => ldc.wc = w, 1000);
+    // onMount( () => ldc.wc = w );
     export function update_segments(){
         setTimeout( () => {
             if(w) w.update_segments_with();
@@ -127,14 +130,14 @@
         active_docid.update( () => 's3://coghealth/demo/CarrieFisher10s.wav' )
     }
     active_docid.subscribe( (x) => {
-        source_uid = x && x.match(/\.wav$/) ? x : null;
+        source_uid = x && x.match(/\.(wav)$/) ? x : null;
     });
 </script>
 
 {#if false}
 <div class="flex">
-<button class="{btn} w-full" on:click={one}>one</button>
-<button class="{btn} w-full" on:click={two}>two</button>
+<button class="{btn} w-full" onclick={one}>one</button>
+<button class="{btn} w-full" onclick={two}>two</button>
 </div>
 {/if}
 
@@ -150,12 +153,14 @@
             {permissions}
             {constraint_export_transcript}
             {constraint_export_transcript_to_task_admin}
+            {constraint_import_transcript}
             {constraint_import_transcript_auto}
             {constraint_rtl}
             {constraint_speakers}
             {constraint_sections}
             {constraint_section_order_forced}
             {constraint_add_asr_segments}
+            {constraint_asr_korean}
             {xlass_def_id}
         />
     {/if}

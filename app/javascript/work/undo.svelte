@@ -60,7 +60,7 @@
     ];
     let ann_id;
     let ann_index;
-    function selected(){}
+    function selectedf(){}
 </script>
 
 <style>
@@ -70,6 +70,6 @@
     {#await p}
         waiting
     {:then rows}
-        <Table bind:selected={ann_id} bind:index={ann_index} {columns} {rows} use_filter={true} key_column=id height=400 on:selected={selected}/>
+        <Table bind:selected={ann_id} indexf={x => ann_index = x} {columns} {rows} use_filter={true} key_column=id height=400 {selectedf}/>
     {/await}
 {/if}

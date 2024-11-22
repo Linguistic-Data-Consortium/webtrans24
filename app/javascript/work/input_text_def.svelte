@@ -1,6 +1,7 @@
 <script>
     import { tick } from 'svelte';
-    import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { patchp } from '../lib/ldcjs/getp';
+    import { flash } from './helpers';
     import { btn, cbtn, dbtn } from './buttons'
     import { fi_text } from './form_inputs';
     let key;
@@ -8,8 +9,6 @@
     export let url;
     let def;
     $: def = JSON.parse(value);
-    let flash_type;
-    let flash_value;
     const id = Math.random().toString(36).substring(2);
     function patch(k, v){
         if(!url){
@@ -18,16 +17,7 @@
         let x = {};
         x[k] = v;
         patchp( url, x ).then(
-            function(data){
-                if(data.error){
-                    flash_type = 'error';
-                    flash_value = data.error.join(' ');
-                }
-                else{
-                    flash_type = 'success';
-                    flash_value = "updated " + k + " to " + (data[k] || (data.meta && data.meta[k]) || (data.constraints && data.constraints[k]));
-                }
-            }
+            x => flash(x, k)
         );
     }
     let first = true;
@@ -144,17 +134,5 @@
         <div>
             {value}
         </div>
-        {#if flash_type}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-            <p
-                id="input-{id}-validation"
-                class="note {flash_type}"
-                on:click={ () => flash_type = null }
-                style="position: static;"
-            >
-                {flash_value}
-            </p>
-        {/if}
     </div>
 </div>

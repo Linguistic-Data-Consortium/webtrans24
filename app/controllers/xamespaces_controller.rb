@@ -15,7 +15,8 @@ class XamespacesController < ApplicationController
               else
                 tree_id = Kit.where(task_id: params[:task_id], state: :done).last(1).map { |x| x.tree_id }
               end
-              if params[:output] == 'annotations'
+              case params[:output]
+              when 'annotations'
                 rows = Xnnotation.where(tree_id: tree_id).map { |x|
                   {
                     transaction_id: x.transaction_id,
@@ -24,10 +25,11 @@ class XamespacesController < ApplicationController
                     tree_id: x.tree_id,
                     iid: x.iid,
                     node_value_id: x.node_value_id,
-                    message: x.message
+                    message: x.message,
+                    created_at: x.created_at
                   }
                 }
-              elsif params[:output] == 'nodes'
+              when 'nodes'
                 rows = Xode.where(tree_id: tree_id).order(:id).map { |x|
                   {
                     id: x.id,
@@ -37,6 +39,30 @@ class XamespacesController < ApplicationController
                     parent_id: x.parent_id,
                     parent_iid: x.parent_iid,
                     node_value_id: x.node_value_id
+                  }
+                }
+              when 'sums'
+                trees = Xnnotation.where(task_id: params[:task_id]).group(:tree_id).count
+                min = trees.values.sort.first
+                trees.each do |tree_id, n|
+                  trees[tree_id] = Xnnotation.where(task_id: params[:task_id], tree_id: tree_id).order(:id).last(n-min)
+                  t = 0
+                  trees[tree_id].each_with_index do |x, i|
+                    if i > 0
+                      d = x.created_at - trees[tree_id][i-1].created_at
+                      t += d if d < 300
+                    end
+                  end
+                  trees[tree_id] = t
+                end
+                rows = trees.map { |k, v|
+                  t = Tree.find k
+                  k = t.kits.first
+                  {
+                    id: k.id,
+                    state: k.state,
+                    user_id: k.user&.name,
+                    total: v
                   }
                 }
               else

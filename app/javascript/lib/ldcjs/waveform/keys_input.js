@@ -1,4 +1,6 @@
 const x = {
+  Escape: 'open_mode_menu',
+  '/': 'open_mode_menu',
   Enter: 'set_active_transcript_line_to_next_and_play_current_span',
   Tab: 'keyboard_focus',
   // e.preventDefault()
@@ -18,7 +20,9 @@ const x = {
     v: 'validate_transcript',
     p: 'play_head_menu',
     n: 'generic_next',
-    u: 'tag_unintelligible'
+    r: 'tag_redact',
+    u: 'tag_unintelligible',
+    l: 'tag_laugh'
   }
 };
 

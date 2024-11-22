@@ -1,20 +1,34 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { tick } from 'svelte';
-    import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
-    export let url;
-    export let label;
-    export let key;
-    export let value;
-    export let values;
-    export let att = false;
-    export let idk = 'id';
-    export let meta = false;
-    let flash_type;
-    let flash_value;
-    let flash_css;
+    import { flash } from './helpers';
+    /**
+     * @typedef {Object} Props
+     * @property {any} urlf
+     * @property {any} label
+     * @property {any} key
+     * @property {any} value
+     * @property {any} values
+     * @property {boolean} [att]
+     * @property {string} [idk]
+     * @property {boolean} [meta]
+     */
+
+    /** @type {Props} */
+    let {
+        urlf,
+        label,
+        key,
+        value,
+        values,
+        att = false,
+        idk = 'id',
+        meta = false
+    } = $props();
     const id = Math.random().toString(36).substring(2);
     function patch(k, v){
-        if(!url){
+        if(!urlf){
             return;
         }
         let x = {};
@@ -41,20 +55,8 @@
                 x[k] = v;
             }
         }
-        patchp( url, x ).then(
-            function(data){
-                if(data.error){
-                    flash_type = 'error';
-                    flash_value = data.error.join(' ');
-                    flash_css = "bg-red-100 border-red-400 text-red-700 px-4 py-3 rounded-full";
-                }
-                else{
-                    flash_type = 'success';
-                    flash_css = "bg-green-100 border-green-400 text-green-700 px-4 py-3 rounded-full";
-                    flash_value = "updated " + k + " to " + (data[k] || (data.meta && data.meta[k]));
-                    setTimeout( () => flash_type = null, 2000);
-                }
-            }
+        urlf(x).then(
+            x => flash(x, k)
         );
     }
     let first = true;
@@ -65,15 +67,18 @@
         }
         patch( key, value );
     }
-    $: update(value);
+    run(() => {
+        update(value);
+    });
     tick().then( () => first = false );
 </script>
 
-<div class="form-group {flash_type ? flash_type + "ed" : ''}">
+<div class="form-group">
     <div class="form-group-header">
         <label for="input-{id}">{label}</label>
     </div>
     <div class="form-group-body">
+        {JSON.stringify(value)}
         <select
             id="input-{id}"
             class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
@@ -84,15 +89,5 @@
                 <option value={x}>{att ? x[att] : x}</option>
             {/each}
         </select>
-        <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-        {#if flash_type}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <p id="input-{id}-validation"
-                class="{flash_css}"
-                on:click={ () => flash_type = null }
-            >
-                {flash_value}
-            </p>
-        {/if}
     </div>
 </div>

@@ -68,10 +68,16 @@ function get_init(){
       return console.error('Error:', e);
     });
   }
+  function getp_no_catch(url){
+    return fetch(url, get_init()).then(responsef);
+  }
   function postp(url, o){
     return fetch(url, post_init(o)).then(responsef).catch(function(e) {
       return console.error('Error:', e);
     });
+  }
+  function postp_no_catch(url, o){
+    return fetch(url, post_init(o)).then(responsef);
   }
   function patchp(url, o){
     return fetch(url, patch_init(o)).then(responsef).catch(function(e) {
@@ -93,5 +99,14 @@ function get_init(){
       return console.error('Error:', e);
     });
   };
-  export { getp, postp, patchp, deletep, getp_wav, getp_simple }
+  export {
+    getp,
+    postp,
+    patchp,
+    deletep,
+    getp_wav,
+    getp_simple,
+    getp_no_catch,
+    postp_no_catch
+  }
   

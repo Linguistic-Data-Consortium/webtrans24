@@ -3,6 +3,7 @@
     import { make_patch } from "./patch";
     import InputText from './input_text.svelte'
     import { check_line_of_code } from '../script/script'
+    import { toast } from "svelte-sonner";
     export let help;
     export let admin = false;
     export let portal_manager = false;
@@ -39,18 +40,16 @@
             }
         }
     }
-    let flash_type;
-    let flash_value;
     const patch = make_patch(
         url,
         (error) => {
-            flash_type = 'error';
             flash_value = error;
+            toast.error(flash_value);
         },
         (message, v) => {
-            flash_type = 'success';
             flash_value = message;
             code = v;
+            toast.success(flash_value);
         }
     )
     let current_line;
@@ -95,9 +94,6 @@
             bind:value={c}
             on:keypress={kp}
         />
-        {#if flash_value}
-            <div>{flash_value}</div>
-        {/if}
         <button class="{btn}" on:click={run}>run</button>
     </div>
 </div>

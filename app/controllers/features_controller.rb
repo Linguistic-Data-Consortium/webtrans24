@@ -1,87 +1,30 @@
 class FeaturesController < ApplicationController
 
   before_action :authenticate
+  before_action :set_model
+
+  def set_model
+    @model = Feature
+  end
 
   def index
-    respond_to do |format|
-      format.json do
-        render json: (
-          if admin?
-            Feature.sorted.all.map(&:attributes)
-          else
-            { error: 'Permission denied.' }
-          end
-        )
-      end
-    end
+    index_allm only: :admin
   end
 
   def show
-    respond_to do |format|
-      format.json do
-        render json: (
-          if admin?
-            Feature.find(params[:id]).attributes
-          else
-            { error: 'Permission denied.' }
-          end
-        )
-      end
-    end
+    show_usersm params: params, only: :admin, users: false
   end
 
   def create
-    respond_to do |format|
-      format.json do
-        render json: (
-          if not admin?
-            { error: "Only an admin can create a feature." }
-          else
-            feature = Feature.new feature_params
-            if feature.save
-              feature.attributes
-            else
-              { error: feature.errors.full_messages }
-            end
-          end
-        )
-      end
-    end
+    createjm params: feature_params, only: :admin
   end
 
   def update
-    respond_to do |format|
-      format.json do
-        render json: (
-          if not admin?
-            { error: "Only an admin can edit the feature." }
-          else
-            feature = Feature.find(params[:id])
-            if feature.update feature_params
-              feature.attributes
-            else
-              { error: feature.errors.full_messages }
-            end
-          end
-        )
-      end
-    end
+    updatejm p: params, params: feature_params, only: :admin
   end
 
   def destroy
-    respond_to do |format|
-      format.json do
-        render json: (
-          if not admin?
-            { error: "Only an admin can delete the feature." }
-          else
-            feature = Feature.find(params[:id])
-            feature.destroy
-            { deleted: "feature: #{feature.name} has been deleted." }
-          end
-        )
-      end
-    end
+    destroyjm params: params, only: :admin
   end
 
   private

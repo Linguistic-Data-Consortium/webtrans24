@@ -1,12 +1,14 @@
 const x = {
   cursor: {
+    Escape: 'open_mode_menu',
+    '/': 'open_mode_menu',
     c: 'command',
     // Tab: 'set_active_transcript_line_to_last_created'
     Tab: 'focus_input',
     ' ': 'play_current_span_or_play_stop',
     // Enter: 'add_transcript_line_and_activate',
     Enter: 'play_current_span_and_add_transcript_line_and_activate',
-    '/': 'add_transcript_line_based_on_play_head',
+    // '/': 'add_transcript_line_based_on_play_head',
     // when 109 # m
     '0': 'open_spectrogram',
     z: 'toggle_zoom',
@@ -21,7 +23,7 @@ const x = {
     h: 'show_help_screen_main',
     // a: 'show_all_transcript_lines'
     '@': 'not_sure',
-    '`': 'play_current_span',
+    // '`': 'play_current_span',
     // '1': 'add_sad'
     // '2': 'get_alignment'
     D: 'delete_all_confirm',
@@ -50,6 +52,8 @@ const x = {
     u: 'upload_transcript'
   },
   window: {
+    Escape: 'open_mode_menu',
+    '/': 'open_mode_menu',
     c: 'set_mode_to_cursor',
     b: 'set_mode_to_beg',
     e: 'set_mode_to_end',
@@ -63,6 +67,8 @@ const x = {
     ';': 'move_window_rstep4'
   },
   selection: {
+    Escape: 'open_mode_menu',
+    '/': 'open_mode_menu',
     c: 'set_mode_to_cursor',
     w: 'set_mode_to_window',
     b: 'set_mode_to_beg',

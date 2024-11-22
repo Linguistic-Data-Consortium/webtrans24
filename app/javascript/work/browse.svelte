@@ -1,7 +1,5 @@
 <script>
     // import { marked } from 'marked';
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Help from './help.svelte'
     import PageTabs from './page_tabs.svelte'

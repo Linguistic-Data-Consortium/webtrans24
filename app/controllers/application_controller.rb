@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   #development uses better errors which would be blocked by this rescue
   if !Rails.env.development?
     rescue_from StandardError do |e|
+      @internal_server_error = true
       #write output to log
       current_path = File.expand_path('.') + '/'
       logger.debug "Rescued from a StandardError exception: #{e.to_s}"
@@ -59,10 +60,21 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def index_allm(only:)
+    index_all model: @model, only: only
+  end
+
   def index_own(model:)
     respondj do
       model.sorted.where(user_id: current_user.id).map(&:attributes)
     end
+  end
+
+  def index_ownm
+    index_own model: @model
+  end
+
+  def custom_attributes(a)
   end
 
   def show_users(model:, params:, users:, only:)
@@ -71,9 +83,14 @@ class ApplicationController < ActionController::Base
         m = model.find(params[:id])
         a = m.attributes
         a[users[0]] = users[1].call(m) if users
+        custom_attributes a
         a
       end
     end
+  end
+
+  def show_usersm(params:, users:, only:)
+    show_users model: @model, params: params, users: users, only: only
   end
 
   def createj(model:, params:, only:, own: false)
@@ -90,6 +107,10 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def createjm(params:, only:, own: false)
+    createj model: @model, params: params, only: only, own: own
+  end
+
   def updatej(model:, p:, params:, only:, own: false)
     respondj do
       instance = model.find(p[:id])
@@ -104,6 +125,10 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def updatejm(p:, params:, only:, own: false)
+    updatej model: @model, p: p, params: params, only: only, own: own
+  end
+
   def destroyj(model:, params:, only:, own: false)
     respondj do
       instance = model.find(params[:id])
@@ -113,6 +138,14 @@ class ApplicationController < ActionController::Base
         { deleted: "#{model} #{instance.name or instance.id} has been deleted." }
       end
     end
+  end
+
+  def destroyjm(params:, only:, own: false)
+    destroyj model: @model, params: params, only: only, own: own
+  end
+
+  def reset_error_state
+    @internal_server_error = false
   end
 
 end

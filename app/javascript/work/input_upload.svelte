@@ -1,14 +1,14 @@
 <script>
     import { btn } from "./buttons"
     import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
-    import { createEventDispatcher } from 'svelte'
     import Spinner from './spinner.svelte'
-    const dispatch = createEventDispatcher();
-    export let partial;
-    export let key;
-    export let value;
-    export let label;
-    let pp;
+    let {
+        partial,
+        key,
+        value,
+        label
+    } = $props();
+    let pp = $state();
     let path = "/sources/get_upload";
     if(partial){
         path += `?partial=${partial}`
@@ -17,7 +17,7 @@
         path += `&${key}=${value}`;
     }
     pp = getp(path);
-    pp.then( () => dispatch('sourcefile', '') );
+    pp.then( () => sourcefile() );
 </script>
 
 <style>

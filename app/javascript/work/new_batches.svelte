@@ -1,14 +1,12 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import { getp, postp, deletep, patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Help from './help.svelte';
     import Table from '../lib/ldcjs/work/table.svelte';
-    import Flash from './flash.svelte'
     import Kit from './kit.svelte'
     import { btn1, cbtn } from './buttons';
     const btn = btn1;
     import { fi_select } from './form_inputs'
+    import { toast } from "svelte-sonner";
     export let help;
     export let project_id;
     export let task_id;
@@ -45,15 +43,16 @@
         title: 'Delete Task',
         h: ''
     };
-    let flash_type = null;
-    let flash_value;
     function response(data){
-        if(data.error){
-            flash_type = 'error';
+        let flash_value;
+        if(!data){
+            toast.error('bad response');
+        }
+        else if(data.error){
             flash_value = data.error.join(' ');
+            toast.error(flash_value);
         }
         else{
-            flash_type = 'success';
             if(data.deleted){
                 flash_value = data.deleted;
             }
@@ -64,7 +63,8 @@
             else{
                 flash_value = "created " + data.task.name;
             }
-            setTimeout( () => dispatch('reload', '') , 1000 );
+            toast.success(flash_value);
+            // setTimeout( () => reload() , 1000 );
         }
     }
     function create(){
@@ -102,8 +102,7 @@
         }
         let o = { uids: uids.join(',') };
         if(!table.match_attempted()){
-            flash_type = 'error';
-            flash_value = "you haven't matched any kits";
+            toast.error("you haven't matched any kits");
         }
         else if(new_user || new_state){
             if(new_user){
@@ -118,8 +117,7 @@
             ).then(response);
         }
         else{
-            flash_type = 'error';
-            flash_value = 'neither user nor state specified';
+            toast.error('neither user nor state specified');
         }
     }
     function reassign2(a){
@@ -131,8 +129,7 @@
         }
         let o = { uids: uids.join(',') };
         if(uids.length == 0){
-            flash_type = 'error';
-            flash_value = "you haven't provided any kits";
+            toast.error("you haven't provided any kits");
         }
         else if(new_user || new_state){
             if(new_user){
@@ -147,13 +144,12 @@
             ).then(response);
         }
         else{
-            flash_type = 'error';
-            flash_value = 'neither user nor state specified';
+            toast.error('neither user nor state specified');
         }
     }
     let new_user;
     let new_state;
-    let states = [ 'unassigned', 'assigned', 'done', 'broken', 'excluded' ];
+    let states = [ 'unassigned', 'assigned', 'done', 'broken', 'excluded', 'priority' ];
     let files;
     function upload(){
         const r = new FileReader();
@@ -188,7 +184,6 @@
             <!-- {task_id} {kit_index[task_id].name} -->
         {/await}
     {:else}
-        <Flash {flash_type} {flash_value} />
         <div class="flex justify-around items-center my-3">
             <!-- {#if task_admin} -->
             {#if false}
@@ -293,7 +288,7 @@
         <Table
             bind:this={table}
             bind:selected={kit_id}
-            bind:index={kit_index}
+            indexf={x => kit_index = x}
             {columns}
             {rows}
             use_filter={true}

@@ -1,8 +1,14 @@
-import { add_message, add_message_listitem, submit_form, add_callback } from './modification2';
+import { add_message, add_message_listitem, submit_form, add_callback, setldc } from './modification2';
 import { srcs } from './sources_stores';
 import { segments } from './stores';
 import { event } from '../../../guides/guide';
 import { round_to_3_places } from './times';
+
+let ldc;
+function set_ldc(x){
+  ldc = x;
+  setldc(x);
+}
 
 function done(comment){
   add_message('0', 'done', comment);
@@ -36,10 +42,10 @@ function delete_all(){
   $('.ListItem').each(function(i, x) {
     all.push($(x).data().meta.id);
   });
-  if(window.ldc.nodes){
+  if(ldc.nodes){
     // add_message('0', 'delete_all', null);
-    // for(const [k, v] of window.ldc.segmap){
-    for(const [k, v] of window.ldc.nodes){
+    // for(const [k, v] of ldc.segmap){
+    for(const [k, v] of ldc.nodes){
       if(v.level == 2) all.push(k);
     }
   }
@@ -101,13 +107,13 @@ function create_test_segment(waveform, f){
 }
 
 function split_segment_at_cursor(cursortime, split_line_margin, f) {
-  if(window.ldc.crnt){
+  if(ldc.crnt){
     // id = $('.active-transcript-line').attr 'id'
     let data;
     let seg;
-    if(window.ldc.obj2.xlass_def_id == 2){
-      let crnt = parseInt(window.ldc.crnt);
-      seg = window.ldc.segmap.get(crnt);
+    if(ldc.obj2.xlass_def_id == 2){
+      let crnt = parseInt(ldc.crnt);
+      seg = ldc.segmap.get(crnt);
       data = {
           meta: {
               id: crnt + 1
@@ -123,7 +129,7 @@ function split_segment_at_cursor(cursortime, split_line_margin, f) {
         const span = { offset: round_to_3_places(cursortime + split_line_margin) };
         span.length = round_to_3_places(src.end - span.offset);
         src.end = round_to_3_places(cursortime - split_line_margin);
-        const b = window.ldc.obj.last_iid + 1;
+        const b = ldc.obj.last_iid + 1;
         add_nodes1(2);
         const src2 = { beg: seg.begi, end: b };
         add_message(data.meta.id, 'change', src2);
@@ -136,13 +142,13 @@ function split_segment_at_cursor(cursortime, split_line_margin, f) {
       }
     }
     else{
-      data = window.$(`#node-${window.ldc.crnt} .Audio`).data();
+      data = window.$(`#node-${ldc.crnt} .Audio`).data();
       const src = data.value;
       if(cursortime > src.beg && cursortime < src.end){
           const span = { offset: cursortime + split_line_margin };
           span.length = round_to_3_places(src.end - span.offset);
           src.end = round_to_3_places(cursortime - split_line_margin);
-          if(window.ldc.nodes) seg.nodes.get('Segment').node_value.set(src);
+          if(ldc.nodes) seg.nodes.get('Segment').node_value.set(src);
           add_message(data.meta.id, 'change', src);
           const f2 = () => {
             event.dispatch(null, 'split_segment');
@@ -158,9 +164,9 @@ function merge_with_following_segment(ids, map, f){
     if(ids.id && ids.next){
       const id = ids.id;
       const next_id = ids.next;
-      if(window.ldc.nodes){
+      if(ldc.nodes){
         const crnt = parseInt(map.get(id).split('-')[1]);
-        let seg = window.ldc.segmap.get(crnt);
+        let seg = ldc.segmap.get(crnt);
         const seg1 = seg;
         const data = {
           meta: {
@@ -172,7 +178,7 @@ function merge_with_following_segment(ids, map, f){
           }
         };
         const crnt2 = parseInt(map.get(next_id).split('-')[1]);
-        seg = window.ldc.segmap.get(crnt2);
+        seg = ldc.segmap.get(crnt2);
         const next_data = {
           meta: {
             id: crnt2 + 1
@@ -185,7 +191,7 @@ function merge_with_following_segment(ids, map, f){
         // w.delete_transcript_line_based_on_segment_id(next_id, false);
         const src = data.value;
         src.end = next_data.value.end;
-        if(window.ldc.obj2.xlass_def_id == 2){
+        if(ldc.obj2.xlass_def_id == 2){
           seg1.nodes.get('Arc').node_value.set(src);
         }
         else{
@@ -195,11 +201,11 @@ function merge_with_following_segment(ids, map, f){
           seg1.nodes.get('Segment').node_value.set(src);
         }
         add_message(data.meta.id, 'change', src);
-        const v1 = window.ldc.segmap.get(crnt).text;
-        const v2 = window.ldc.segmap.get(crnt2).text;
+        const v1 = ldc.segmap.get(crnt).text;
+        const v2 = ldc.segmap.get(crnt2).text;
         if(v2 && v2.length > 0){
           let v = { value: `${v1} ${v2}` };
-          if(window.ldc.obj2.xlass_def_id == 2){
+          if(ldc.obj2.xlass_def_id == 2){
             seg1.nodes.get('Text').node_value.set(v);
           }
           else{
@@ -251,16 +257,16 @@ function delete_transcript_line_based_on_listitem_id(id, submit, f) {
 
 function delete_transcript_line_based_on_segment_id(map, x, submit, f) {
   const sel = `#${map.get(x)}`;
-  if(window.ldc.nodes){
+  if(ldc.nodes){
     return delete_transcript_line_based_on_listitem_id(sel.split('-')[1], submit, f);
   }
   return delete_transcript_line_based_on_listitem_id($(sel).data().meta.id, submit, f);
 }
 
 function add_segment(segment, callback){
-  let b = window.ldc.obj.last_iid + 1;
+  let b = ldc.obj.last_iid + 1;
   let vals = [];
-  if(window.ldc.obj2.xlass_def_id == 2){
+  if(ldc.obj2.xlass_def_id == 2){
   vals.push([ 'N', { docid: segment.docid, beg: segment.beg, type: 'real' } ]);
   add_message_listitem('NList', vals);
   vals = [];
@@ -279,33 +285,11 @@ function add_segment(segment, callback){
   add_callback(callback);
 }
 
-function save_unintelligible(e, x, f){
-  const input = e.detail.e.target;
-  const a = input.selectionStart;
-  const b = input.selectionEnd;
-  console.log(x);
-  const s = window.getSelection();
-  console.log(s);
-  const iid = x.iid + 2;
-  const edit = x.text.substring(0, a) + '((' + x.text.substring(a, b) + '))' + x.text.substring(b);
-  if(window.ldc.nodes){
-      console.log('here')
-      console.log(window.ldc.segmap.get(x.iid));
-      const text = window.ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
-      window.ldc.segmap.get(x.iid).nodes.get(text).node_value.set( { value: edit } );
-      waveform.component.set_active_transcript_line(null);
-      segs = segs;
-  }
-  add_message(iid, 'change', { value: edit });
-  submit_form();
-  if(f) add_callback(f);
-}
-
 function redactf(iid, redact_text, redact_iid, redact_edit, f){
-  if(window.ldc.nodes){
-      const text = window.ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
-      window.ldc.segmap.get(iid-2).nodes.get(text).node_value.set( { value: redact_text } );
-      if(redact_edit) window.ldc.segmap.get(parseInt(redact_iid)-2).nodes.get(text).node_value.set( { value: redact_edit } );
+  if(ldc.nodes){
+      const text = ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
+      ldc.segmap.get(iid-2).nodes.get(text).node_value.set( { value: redact_text } );
+      if(redact_edit) ldc.segmap.get(parseInt(redact_iid)-2).nodes.get(text).node_value.set( { value: redact_edit } );
   }
   add_message(iid.toString(), 'change', { value: redact_text });
   if(redact_edit) add_message(redact_iid, 'change', { value: redact_edit });
@@ -321,8 +305,8 @@ function delete_segments(ids, f){
 
 function add_section(section, id, f){
   let vals;
-  if(window.ldc.obj2.xlass_def_id == 2){
-    const seg = window.ldc.segmap.get(id);
+  if(ldc.obj2.xlass_def_id == 2){
+    const seg = ldc.segmap.get(id);
     vals = [
       [ 'Arc', { beg: seg.begi, end: seg.endi } ],
       [ 'Name', { value: section } ]
@@ -343,7 +327,7 @@ function add_section(section, id, f){
 }
 
 function close_section(h, f) {
-  if(window.ldc.obj2.xlass_def_id == 2){
+  if(ldc.obj2.xlass_def_id == 2){
     extend_section(h, f);
     return;
   }
@@ -439,8 +423,8 @@ function add_audio_to_list(docid, list_selector, audio_path, span){
       type: 'real'
     };
     let b;
-    if(window.ldc.obj2.xlass_def_id == 2){
-      b = window.ldc.obj.last_iid + 1;
+    if(ldc.obj2.xlass_def_id == 2){
+      b = ldc.obj.last_iid + 1;
       add_nodes1(2);
     }
     if(false){// (this.debug) {
@@ -454,7 +438,7 @@ function add_audio_to_list(docid, list_selector, audio_path, span){
       console.log('adding line');
       console.log(src);
     }
-    if(window.ldc.obj2.xlass_def_id == 2){
+    if(ldc.obj2.xlass_def_id == 2){
       add_message('new.Arc', 'change', { beg: b, end: (b+2) });
       add_nodes2(docid, [ [ b, src.beg ], [ b+2, src.end ] ]);
     }
@@ -462,13 +446,13 @@ function add_audio_to_list(docid, list_selector, audio_path, span){
       add_message('new.Segment', 'change', src);
     }
     if (span.transcript) {
-      const name = window.ldc.obj2.xlass_def_id == 2 ? 'new.Text' : 'new.Transcription';
+      const name = ldc.obj2.xlass_def_id == 2 ? 'new.Text' : 'new.Transcription';
       add_message(name, 'change', { value: span.transcript });
     }
     if (span.speaker) {
       add_message('new.Speaker', 'change', { value: span.speaker });
     } else {
-      const speaker = window.ldc.vars.last_speaker_used;
+      const speaker = ldc.vars.last_speaker_used;
       if(speaker) add_message('new.Speaker', 'change', { value: speaker });
     }
     return 'submit';
@@ -504,8 +488,8 @@ function delete_section(id, f){
 };
 
 function set_text(iid, value, transcription, f){
-  const text = window.ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
-  if(window.ldc.nodes) transcription.nodes.get(text).node_value.set( { value: value } );
+  const text = ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
+  if(ldc.nodes) transcription.nodes.get(text).node_value.set( { value: value } );
   add_message(iid, 'change', { value: value });
   submit_form();
   add_callback(f);
@@ -517,20 +501,20 @@ function add_empty_segments(emptySegments){
   );
   if (emptySegments.length){
     submit_form();
-    add_callback( () => window.ldc.main.refresh() );
+    add_callback( () => ldc.main.refresh() );
   }
 }
 
 function update_node(docid, n, r, begend){
-  const seg = window.ldc.segmap.get(parseInt(n.split('-')[1])).nodes.get('Arc');
+  const seg = ldc.segmap.get(parseInt(n.split('-')[1])).nodes.get('Arc');
   const v = { docid: docid, beg: r, type: 'real' };
   add_message(seg.value[begend]+1, 'change', v);
   submit_form();
 }
 
 function update_wave(wave_docid, n, span_offset, span_end, f){
-  if(window.ldc.nodes){
-    let seg = window.ldc.segmap.get(parseInt(n.split('-')[1])).nodes.get('Segment');
+  if(ldc.nodes){
+    let seg = ldc.segmap.get(parseInt(n.split('-')[1])).nodes.get('Segment');
     n = seg.iid;
     let src = {
         docid: wave_docid,
@@ -556,7 +540,7 @@ function update_wave(wave_docid, n, span_offset, span_end, f){
 }
 
 // function split_segment(data, seg, src, span, f){
-//   if(window.ldc.nodes) seg.nodes.get('Segment').node_value.set(src);
+//   if(ldc.nodes) seg.nodes.get('Segment').node_value.set(src);
 //   add_message(data.meta.id, 'change', src);
 //   add_transcript_line_split(span, f);
 // }
@@ -586,6 +570,7 @@ function save_redaction(iid, redact_text, redact_iid, redact_edit, f){
 function add_cb(f){ add_callback(f); }
 
 export {
+  set_ldc,
   done,
   broken,
   skip,
@@ -600,7 +585,6 @@ export {
   delete_transcript_line_based_on_segment_id,
   add_segment,
   add_section,
-  save_unintelligible,
   redactf,
   delete_segments,
   close_section,

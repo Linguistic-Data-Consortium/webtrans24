@@ -1,4 +1,9 @@
 console.log("Hello from training.js");
+import { state as state_store } from '../lib/ldcjs/waveform/stores';
+import { times } from '../lib/ldcjs/waveform/times';
+import { is_playing } from '../lib/ldcjs/audio/main';
+let state;
+state_store.subscribe( (x) => state = x );
 
 import { Guide } from "./guide";
 import { event as evt } from './guide';
@@ -35,7 +40,7 @@ const event = new Proxy(evValues, {get(t,p){
 }});
 
 const isTaskPage = () => Guide.route(["task_users", "get"]) && Guide.route("workflow_id")
-let is_playing=()=>false; // to be defined later
+// let is_playing=()=>false; // to be defined later
 const xpath = sel=>document.evaluate(sel,document,null,XPathResult.FIRST_ORDERED_NODE_TYPE,null).singleNodeValue;
 
 /**
@@ -103,7 +108,7 @@ const welcome = step("Welcome", async () => {
   await openDialog(
     "Welcome to the Webtrans Tutorial!",
     "Hi! This tutorial will guide you through how to use the transcription tool.\
-     This tool allows you to work remotely for the LDC, and it was especially designed to help you transcribe\
+     This tool allows you to work remotely, and it was especially designed to help you transcribe\
      quickly and easily."
   );
 
@@ -115,6 +120,35 @@ const welcome = step("Welcome", async () => {
   introducing_waveform();
 });
 
+function check_state(x, r){
+  console.log(1)
+  const f = () => {
+    if(state == x){
+      r();
+      console.log(2)
+    }
+    else if(x == 'playing' && is_playing()){
+      r();
+    }
+    else if(x == 'stopped' && !is_playing()){
+      r();
+    }
+    else{
+      setTimeout(f, 500);
+    }
+  };
+  f();
+}
+function check_times(r){
+  let second = false;
+  const un = times.subscribe( x => {
+    if(second){
+      un();
+      r();
+    }
+    second = true;
+  });
+}
 /**
  * @description Introducing the Waveform window and It's features
  */
@@ -137,27 +171,31 @@ const introducing_waveform = step("Introduction & Playback", async function () {
   await waveform.tte("<p>To play the audio file, start by clicking anywhere in the waveform window\
                    (you should see a red cursor as you move your mouse).</p>", "cover", {
     click: false,
-    promise: r=>event.clicked_on_waveform.then(r)
+    // promise: r=>event.clicked_on_waveform.then(r)
+    promise: r => check_state('mousedown_waveform', r)
   }).promise;
 
   const keyboard_icon = await event.drew_keyboard_icon.rush;
   await waveform.tte("<p>Now press the space bar on your keyboard to play the audio.</p>", {
     click: false,
-    promise: r=>event.playback_started.then(r),
+    // promise: r=>event.playback_started.then(r),
+    promise: r => check_state('playing', r),
     condition: ()=>document.activeElement == keyboard_icon,
     loseCondition: async ()=>{
       await waveform.tte("<p>Oops, it looks like you clicked outside the waveform window.</p>\
                     <p>Please click inside the waveform window again.</p>", {
         click: false,
         cover: true,
-        promise: r=>event.clicked_on_waveform.then(r)
+        // promise: r=>event.clicked_on_waveform.then(r)
+        promise: r => check_state('playing', r)
       }).promise;
     }
   }).promise;
 
   await waveform.tte("<p>Great! You can press Space again to stop playing, or wait until playback is over.</p>", {
     click: false,
-    promise: r=>event.playback_ended.then(r)
+    // promise: r=>event.playback_ended.then(r)
+    promise: r => check_state('stopped', r)
   }).promise;
   // Wait 500ms to prevent a keyup on spacebar from closing first dialog from next step
   await promise(r => setTimeout(r, 500));
@@ -183,7 +221,8 @@ const navigating_waveform = step("Navigating the waveform", async function () {
     {
       cover: true,
       click: false,
-      promise: r=>event.drew_scroll_cursor.then(()=>setTimeout(r,200))
+      // promise: r=>event.drew_scroll_cursor.then(()=>setTimeout(r,200))
+      promise: r => check_times(r)
     }
   ).promise;
 
@@ -204,11 +243,11 @@ const makeAselection = step("Create an Audio Segment", async function () {
     "Create an Audio Segment",
     "Transcribing the full audio file as one long single line would be unwise. In this step, \
        we will learn how to create short <em>segments</em> that can easily be transcribed.<br>\
-       Ideally, segments should only be a few words long, and no longer than a single sentence."
+       Ideally, segments should be a single sentence long, but many segments will include the last part of one sentence and the first part of another."
   );
   await waveform.tte("<p>To start with, let's see how to make a selection: move your cursor over the waveform, click, drag your cursor, and release.</p>\
-               <p>Important tip: when transribing don't try to create segements longer than 8 seconds.<br>\
-                  For now, just create a short segment, just 2s long for example.</p>", "cover", {
+               <p>Important tip: when transcribing, end your segments at pauses or breaths lasting 0.5 seconds or longer.<br>\
+                  For now, just create a short segment, just 2sec long for example.</p>", "cover", {
     click: false,
     promise: async r=>{
       await event.drew_selection;
@@ -219,6 +258,12 @@ const makeAselection = step("Create an Audio Segment", async function () {
 
   const keyboard_icon = await event.drew_keyboard_icon.rush, rect = await event.drew_selection.rush;
   let new_segment;
+  function find_active(){
+    new_segment = document.querySelector('.active-segment');
+    if(!new_segment){
+      setTimeout(x => find_active(), 500);
+    }
+  }
   await waveform.tte("<p>Great job! You can press the space bar to listen to the selection.</p>", {
     click: false,
     promise: r=>{
@@ -252,7 +297,9 @@ const makeAselection = step("Create an Audio Segment", async function () {
 
   let replay = await event.drew_underline.rush;
   await new Promise(r=>setTimeout(r,1000));
-  let input = addTTE(new_segment.querySelector("input"));
+  find_active();
+  await new Promise(r=>setTimeout(r,500));
+  let input = addTTE(new_segment.querySelector("textarea"));
 
   await input.tte("<p>This text input box is where you transcribe the newly created segment.</p>\
                    <p>Type some text and then press <tt>Enter</tt> to finish it.</p>\
@@ -268,14 +315,13 @@ const makeAselection = step("Create an Audio Segment", async function () {
         cover: true,
         y: 'above',
         promise: r=>new_segment.addEventListener('click', ()=>{
-          input = new_segment.querySelector("input");
+          input = new_segment.querySelector("textarea");
           t._target = input;
           r();
         })
       }).promise;
     }
   }).promise;
-  
   await event.playback_started;
   
   await replay.tte("<p>Playback starts automatically after you press <tt>Enter</tt>.</p>\
@@ -288,8 +334,8 @@ const makeAselection = step("Create an Audio Segment", async function () {
 
   await openDialog(
     "Create an Audio Segment",
-    "<p>Great Job! Now try creating another 1-2s audio segment not overlapping with the previous one.</p>" +
-    "<p>Remember, blue lines indicate audio segments, you can use them as a guide to create non-overlapping segments.</p>"
+    "<p>Great Job! Now try creating another 1-2 sec audio segment not overlapping with the previous one.</p>" +
+    "<p>Remember, blue lines indicate audio segments, so you can use them as a guide to create additional, non-overlapping segments for the same speaker. (Different speakers may overlap.)</p>"
   );
 
   await waveform.tte({
@@ -339,7 +385,7 @@ const toggle = step("Toggle", async function () {
     promise: r => segment.addEventListener('click',r)
   }).promise;
 
-  let input = addTTE(segment.querySelector("input"));
+  let input = addTTE(segment.querySelector("textarea"));
   input.focus();
 
   const inputCondition = t=>document.body.contains(t._target) && document.activeElement==t._target;
@@ -350,7 +396,7 @@ const toggle = step("Toggle", async function () {
       click: false,
       promise:async r=>{
         await new Promise(r2=>segment.addEventListener('click',r2));
-        t._target = segment.querySelector("input");
+        t._target = segment.querySelector("textarea");
         input = t._target;
         r();
       }
@@ -388,7 +434,7 @@ const toggle = step("Toggle", async function () {
         await segment.tte("<p>It looks like you closed the input box. Please click here to reopen it.</p>",{
           click: false, cover: true, y: 'above', promise:r=>segment.addEventListener('click',r)
         }).promise;
-        input = addTTE(segment.querySelector("input"));
+        input = addTTE(segment.querySelector("textarea"));
         await segment.tte("<p>Now press <tt>Tab</tt> to bring focus back to the waveform window.</p>",{
           click: false, cover: false, promise:r=>keyboard_icon.addEventListener('focusin',r)
         }).promise;
@@ -398,7 +444,7 @@ const toggle = step("Toggle", async function () {
   }).promise;
 
   await new Promise(r=>setTimeout(r,250));  // Wait for input to re-appear(?)
-  input = addTTE(segment.querySelector("input"));
+  input = addTTE(segment.querySelector("textarea"));
 
   await input.tte("<p>Now you're back in the text window (notice its red border).</p>\
                    <p>Press <tt>Enter</tt> to play the next audio segment.</p>", {
@@ -423,7 +469,7 @@ const toggle = step("Toggle", async function () {
   await waveform.tte("<p>Now press <tt>Enter</tt> and notice what happens!</p>", {
     click: false,
     condition: () => keyboard_icon==document.activeElement,
-    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "Waveform"),
+    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "Waveform area"),
     key: "Enter",
     y: "below"
   }).promise;
@@ -447,8 +493,8 @@ const toggle = step("Toggle", async function () {
     promise: r => new_segment.addEventListener("focusin", r)
   }).promise;
 
-  input = addTTE(new_segment.querySelector("input"));
-  await input.tte("<p>Now press <tt>CTRL</tt>+<tt>d</tt> on your keyboard to delete this unwanted audio segment.</p>", {
+  input = addTTE(new_segment.querySelector("textarea"));
+  await input.tte("<p>Now press <tt>CTRL</tt>+<tt>d</tt> on your keyboard to delete this unwanted audio segment, clicking the red 'delete' button to confirm.</p>", {
     click: false,
     y: "below",
     promise: r => document.addEventListener("keydown", e => { if (e.ctrlKey && e.key === "d") r(); }),
@@ -460,7 +506,7 @@ const toggle = step("Toggle", async function () {
         click: false,
         promise:r=>new_segment.addEventListener('click',r)
       }).promise;
-      input = addTTE(new_segment.querySelector("input"));
+      input = addTTE(new_segment.querySelector("textarea"));
       t._target = input;
     }
   }).promise;
@@ -484,8 +530,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
     "Split and Merge Segments: Part I",
     "As your transcription work progresses, you will find that the edits you want to make to your segments\
        are not limited to deletion.<br><br>\
-       Sometimes, you will create one segment and later realize that splitting it in two would be a better option,\
-       or the other way around. Let us learn how to split and merge audio segments."
+       Sometimes, you will create one segment and later realize that splitting it in two would be a better option, or the other way around. Maybe you want to exclude a pause or breath of 0.5 seconds or longer, or part of the segment actually contains speech from a different speaker. This tool allows for these adjustments. Let us learn how to split and merge audio segments."
   );
 
   const waveform = await event.drew_waveform.rush, keyboard_icon = await event.drew_keyboard_icon.rush;
@@ -499,7 +544,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
 
   const getSegmentBack = async (t) => {
     await promise(r=>setTimeout(r,100)); // wait to check if segment is still active;
-    const input = segment.querySelector("input");
+    const input = segment.querySelector("textarea");
     if (!input || (t=='no_keyboard' && input != document.activeElement))
       await segment.tte("You lost focus from your segment. Click on it again", "cover", "above",
         {click:false, promise:r=>segment.addEventListener("click",r)}).promise;
@@ -511,7 +556,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
 
   await waveform.tte("<p>Now press <tt>Tab</tt> to give focus to the waveform window.</p>", {
     key: "Tab", click: false, cover: false, y: "above",
-    condition: ()=>document.activeElement == segment.querySelector("input"),
+    condition: ()=>document.activeElement == segment.querySelector("textarea"),
     loseCondition: async () => {
       await getSegmentBack("no_keyboard");
     }
@@ -522,7 +567,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
                       <p>IMPORTANT: do NOT click, simply move the red cursor</p>", {
     click: false, key: false,
     promise: r => waveform.addEventListener('mousemove',r),
-    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("input"),
+    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("textarea"),
     loseCondition: getSegmentBack
   }).promise;
 
@@ -534,7 +579,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
   await waveform.tte("<p>Press the comma '<tt>,</tt>' key on your keyboard to split the segment where the cursor is.</p>\
                       <p>IMPORTANT: do NOT click, simply move the cursor and then press '<tt>,</tt>'.</p>", {
     click: false,
-    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("input"),
+    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("textarea"),
     loseCondition: getSegmentBack,
     promise: r=> {
       let resolved = false, warning = false;
@@ -569,7 +614,7 @@ const divide_and_merge_segment = step("Split and Merge Segments: Part I", async 
                          <p>Note that this command works with waveform focus---framed keyboard icon.</p>", {
     click: false, y: 'above', 
     promise: r=>event.merged_segments.then(r),
-    condition: () => document.activeElement==keyboard_icon && segment.querySelector("input"),
+    condition: () => document.activeElement==keyboard_icon && segment.querySelector("textarea"),
     loseCondition: getSegmentBack,
     cover: false
   }).promise;
@@ -618,8 +663,8 @@ const divide_and_merge_from_text = step("Split and Merge: Part II", async functi
     click: false,
     cover: false,
     y: "above",
-    condition: () => document.activeElement==segment.querySelector("input"),
-    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "Input", segment),
+    condition: () => document.activeElement==segment.querySelector("textarea"),
+    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "text window", segment),
     promise: r=> {
       let resolved = false, warning = false;
       document.addEventListener("keydown", async e => {
@@ -643,8 +688,8 @@ const divide_and_merge_from_text = step("Split and Merge: Part II", async functi
                          (<tt>Ctrl</tt>+<tt>m</tt>) to merge the two split segments.</p>", {
     click: false,
     y: "above",
-    condition: () => document.activeElement == segment.querySelector("input"),
-    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "Input", segment),
+    condition: () => document.activeElement == segment.querySelector("textarea"),
+    loseCondition: async () => await bringFocusToRelevantWindow(waveform, "text window", segment),
     promise: r => document.addEventListener('keyup', e=> e.ctrlKey && e.key === "m" && r())
   }).promise;
 
@@ -665,9 +710,7 @@ const adjust_segments = step("Adjust Audio Segments", async function () {
   const waveform = await event.drew_waveform.rush;
   await openDialog(
     "Adjust Audio Segments",
-    "You may have noticed that splitting one segment inserts an empty area between the two new segments:\
-       this is one situation where you might need to adjust (shorten or lengthen) an existing segment.<br><br>\
-       Let us see how to do just that."
+    "You may have noticed that splitting one segment inserts an empty area between the two new segments: this is one situation where you might need to adjust (shorten or lengthen) an existing segment. You may need to adjust your segments to reflect different, simultaneous speakers, whose segments can overlap."
   );
   
   let segments = await event.drew_segments.rush, segment;
@@ -685,8 +728,8 @@ const adjust_segments = step("Adjust Audio Segments", async function () {
       click: false,
       cover: true,
       promise: r=>event.adjusted_time.then(r),
-      condition: ()=>segment.querySelector("input"),
-      loseCondition: async () => await bringFocusToRelevantWindow(waveform, "Input", segment)
+      condition: ()=>segment.querySelector("textarea"),
+      loseCondition: async () => await bringFocusToRelevantWindow(waveform, "text window", segment)
   }).promise;
 
   await promise(r=>setTimeout(r,500)); // 500ms timer to leave time to user to see what happens
@@ -708,9 +751,9 @@ const zoom_in_out = step("Zoom In/Zoom Out", async function () {
   const waveform = await event.drew_waveform.rush;
   await openDialog(
     "Adjust Audio Segments: Zoom In/Zoom Out",
-    "Whenever you adjust a segment, you should insert a buffer of 0.1s before and after it:\
+    "Whenever you adjust a segment, you should insert a buffer of 0.1 sec before and after it:\
        this ensures that a word won't be cut off prematurely.<br><br>\
-       Precisely measuring 0.1s can be difficult, so this tool comes with a built-in zoom in/out function."
+       Precisely measuring 0.1 sec can be difficult, so this tool comes with a built-in zoom in/out function."
   );
 
   const keyboard_icon = await event.drew_keyboard_icon.rush;
@@ -787,7 +830,7 @@ const home_keys_one = step("Home Keys: Part I", async () => {
     promise: r => allSegments.forEach(n=>n.addEventListener('click',e=>r(segment=addTTE(n))))
   }).promise;
 
-  let input = addTTE(segment.querySelector("input"));
+  let input = addTTE(segment.querySelector("textarea"));
   await input.tte("<p>Now that your segment is active, press <tt>Tab</tt> to give focus to the waveform window.</p>\
              <p>Important: do NOT click the waveform window, or you will lose the active segment.</p>", {
     y: "below",
@@ -795,8 +838,8 @@ const home_keys_one = step("Home Keys: Part I", async () => {
     click: false,
     condition: t => t._target === document.activeElement,
     loseCondition: async t => {
-      await bringFocusToRelevantWindow(input, "Input", segment);
-      input = segment.querySelector("input");
+      await bringFocusToRelevantWindow(input, "text window", segment);
+      input = segment.querySelector("textarea");
       t._target = input;
     },
     key: "Tab"
@@ -813,10 +856,10 @@ const home_keys_one = step("Home Keys: Part I", async () => {
     cover: true,
     y: "below",
     key: "b",
-    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("input"),
+    condition: ()=>document.activeElement == keyboard_icon && segment.querySelector("textarea"),
     loseCondition: async ()=>{
       await new Promise(r=>setTimeout(r,100));
-      if (segment.querySelector("input")){
+      if (segment.querySelector("textarea")){
         const filename = await event.drew_filename.rush;
         await filename.tte("<p>It looks like your waveform window lost focus. Simply click on the keyboard icon.</p>",{
           click: false, y: 'below', x: 'right', cover: false, promise:r=>keyboard_icon.addEventListener('click',r)
@@ -834,7 +877,6 @@ const home_keys_one = step("Home Keys: Part I", async () => {
   }).promise;
 
   await modeAppears('beg');
-  
   await mode.tte("<p>This now reads <em>beg</em>: you are now controlling the beginning of the segment.</p>\
                   <p>Press the key <tt>f</tt> to move it to the left, or the key <tt>j</tt> to move it to the right.</p>", {
     y: "below",
@@ -877,8 +919,8 @@ const home_keys_one = step("Home Keys: Part I", async () => {
     cover: true,
     click: false,
     key: "e",
-    condition: ()=>allSegments.find(s=>s.querySelector("input")) && document.activeElement==keyboard_icon,
-    loseCondition: ()=>bringFocusToRelevantWindow(mode,"Keyboard Icon")
+    condition: ()=>allSegments.find(s=>s.querySelector("textarea")) && document.activeElement==keyboard_icon,
+    loseCondition: ()=>bringFocusToRelevantWindow(mode,"Keyboard Icon area")
   }).promise;
 
   await modeAppears('end');
@@ -1026,7 +1068,7 @@ const open_help = step("Help Menu: General", async function () {
   );
 
   const waveform = await event.drew_waveform.rush;
-  await waveform.tte("<p>First, make sure your focus is on the waveform window (framed keyboard icon).</p>\
+  await waveform.tte("<p>First, make sure your focus is on the waveform window (framed keyboard icon should be green).</p>\
                       <p>Then press the <tt>h</tt> key to open the help menu. </p>", {
     click: false,
     promise: r => event.opened_help.then(r)
@@ -1233,9 +1275,14 @@ const selectionHappened=r=>{
 };
 
 const modeAppears = mode => new Promise(async r=>{
-  const node = await event.drew_mode.rush;
-  const check = ()=>(node.textContent==mode && r()) || window.requestAnimationFrame(check);
-  check();
+  setTimeout( () => {
+    const text = document.getElementsByClassName('mode')[0].firstElementChild.textContent;
+    if(text == mode) r();
+  }, 500);
+  // const node = await event.drew_mode.rush;
+  // console.log(node);
+  // const check = ()=>(node.textContent==mode && r()) || window.requestAnimationFrame(check);
+  // check();
 });
 
 const lostMode = async check_mode => {
@@ -1275,18 +1322,18 @@ const dontOpenHelp = ()=> {
 
 const bringFocusToRelevantWindow = async (currentTooltip, window, node) => {
   let p;
-  if (window == "Waveform"){
+  if (window == "Waveform area"){
     node = await event.drew_waveform.rush;
     p = r=>node.addEventListener("click",r);
   }
-  else if (window == "Input") {
+  else if (window == "text window") {
     if (node===undefined) node = await event.created_segment.rush;
     node = addTTE(node);
-    p = r=>document.addEventListener("focusin", e=>document.activeElement==node.querySelector("input")&&r());
+    p = r=>document.addEventListener("focusin", e=>document.activeElement==node.querySelector("textarea")&&r());
   }
-  else if (window == "Keyboard Icon") {
+  else if (window == "Keyboard Icon area") {
     await new Promise(r=>setTimeout(r,200));  // Wait before checking active segments
-    if (!allSegments.find(s=>s.querySelector("input"))){
+    if (!allSegments.find(s=>s.querySelector("textarea"))){
       const segments = await event.drew_segments.rush;
       await segments.tte("You need to have a segment active. Click on a segment.",
             {click:false,cover:true,promise:r=>allSegments.forEach(s=>s.addEventListener('click',r))}).promise;
@@ -1296,8 +1343,8 @@ const bringFocusToRelevantWindow = async (currentTooltip, window, node) => {
   }
 
   await node.tte(
-    "<p>It looks like you lost focus from the " + window +" area.</p>\
-        <p>Let us bring it back: simply click here to bring focus back to the "+ window +" area.</p>", {
+    "<p>It looks like you lost focus from the " + window +".</p>\
+        <p>Let us bring it back: simply click here to bring focus back to the "+ window +".</p>", {
     click: false, cover: true,
     promise: p
   }).promise;
@@ -1306,7 +1353,7 @@ const bringFocusToRelevantWindow = async (currentTooltip, window, node) => {
   // $(currentTooltip.tooltips[0]).find('div.content').html(`<p>Focus is back on the ${window} window.</p><p>${oldText}</p>`);
   const contentDiv = currentTooltip.tooltips[0].querySelector("div.content");
   const oldText = contentDiv.innerText.replace(/Focus is back on the \w+ area./,'');
-  contentDiv.innerHTML = `<p>Focus is back on the ${window} area.</p><p>${oldText}</p>`;
+  contentDiv.innerHTML = `<p>Focus is back on the ${window}.</p><p>${oldText}</p>`;
 }
 
 Function.prototype.extend = function (newf) {

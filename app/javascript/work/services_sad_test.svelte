@@ -6,13 +6,19 @@
     // sp = ldc_nodes.getp_simple(base + '/schema/sad.schema.json');
     // sp.then((x) => { console.log('pppppp'); console.log(x) });
     // let urls = window.gdata('.Root').resources.urls;
-    // let url = Object.keys(urls)[0];
-    export let url;
+    
+    /**
+     * @typedef {Object} Props
+     * @property {any} url - let url = Object.keys(urls)[0];
+     */
+
+    /** @type {Props} */
+    let { url } = $props();
     getSignedUrlPromise('coghealth', url).then( (fn) => get1(fn) );
     // url = 'https://coghealth.s3.amazonaws.com/' + url;
     // get1(url);
-    let service_promise;
-    let output_promise;
+    let service_promise = $state();
+    let output_promise = $state();
     function get1(fn){
         const o = { type: 'sad', data: { audio: fn } };
         const set_sp = (x) => service_promise = x;

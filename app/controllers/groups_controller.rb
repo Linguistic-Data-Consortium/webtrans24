@@ -1,6 +1,11 @@
 class GroupsController < ApplicationController
 
   before_action :authenticate
+  before_action :set_model
+
+  def set_model
+    @model = Group
+  end
 
   def users_not_in
     respond_to do |format|
@@ -11,24 +16,28 @@ class GroupsController < ApplicationController
   def index
     Group.where(name: 'Portal Managers').first_or_create
     Group.where(name: 'Project Managers').first_or_create
-    index_all model: Group, only: :admin
+    index_allm only: :admin
+  end
+
+  def custom_attributes(a)
+    a[:group_admin_bool] = admin?
   end
 
   def show
     f = -> (x) { x.group_users.map { |x| { id: x.id, user_id: x.user_id, name: x.user_name } } }
-    show_users model: Group, params: params, users: [ :group_users, f ], only: :admin
+    show_usersm params: params, users: [ :members, f ], only: :admin
   end
 
   def create
-    createj model: Group, params: group_params, only: :admin
+    createjm params: group_params, only: :admin
   end
 
   def update
-    updatej model: Group, p: params, params: group_params, only: :admin
+    updatejm p: params, params: group_params, only: :admin
   end
 
   def destroy
-    destroyj model: Group, params: params, only: :admin
+    destroyjm params: params, only: :admin
   end
 
   private

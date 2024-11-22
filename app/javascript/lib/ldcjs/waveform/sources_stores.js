@@ -67,10 +67,11 @@ function add_source_audio_collision(docid) {
 }
 
 function add_source_audio_collision_helper(srcs, all, docid) {
-  $.each(srcs[docid], function(node_id, src){
+  if(!srcs[docid]) return;
+  for(const [node_id, src] of Object.entries(srcs[docid])){
     while(collides_set(src, all)) src.level += 1;
     all.push(src);
-  });
+  }
 }
 
 //function checks a set of sources to see if they overlap with a provided source

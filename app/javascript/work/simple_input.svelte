@@ -1,6 +1,5 @@
 <script>
-    export let label;
-    export let value;
+    let { label, value = $bindable() } = $props();
 </script>
 
 <div class="form-group">

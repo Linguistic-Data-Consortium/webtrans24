@@ -6,6 +6,7 @@ const sections = writable([]);
 const spectrogram_settings = writable({});
 const active_channel = writable(0);
 const active_docid = writable(null);
+const state = writable(null);
 export {
     settings,
     segments,
@@ -13,5 +14,6 @@ export {
     sections,
     spectrogram_settings,
     active_docid,
-    active_channel
+    active_channel,
+    state
 }

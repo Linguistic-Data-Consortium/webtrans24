@@ -6,15 +6,21 @@
     // export let lead_annotator = false;
     // export let class_def_id;
     // export let name;
-    // export let project_id;
-    export let task_id;
+    
+    /**
+     * @typedef {Object} Props
+     * @property {any} task_id - export let project_id;
+     */
+
+    /** @type {Props} */
+    let { task_id } = $props();
 
 
     let url = `/xamespaces?task_id=${task_id}`;
 
     let p = getp(`/xamespaces/0?task_id=${task_id}&output=one`);
 
-    let tables = [ 'annotations', 'nodes' ];
+    let tables = $state([ 'annotations', 'nodes', 'sums' ]);
     p.then( (x) => {
         console.log(x)
         for(const k of x){
@@ -23,10 +29,10 @@
         }
         tables = tables;
     } );
-    let columns = [];
-    let rows = [];
+    let columns = $state([]);
+    let rows = $state([]);
     let defined = '';
-    let pp = Promise.resolve();
+    let pp = $state(Promise.resolve());
     function fill(t, c){
         // table = t;
         const cc = c ? '&count=true' : ''
@@ -54,7 +60,7 @@
         } );
     }
     // fill('annotations', false);
-    let kit_uid;
+    let kit_uid = $state();
 </script>
 
 <style>
@@ -64,7 +70,7 @@
     <span>kit uid:</span>
     <span><input class="w-48 inline" bind:value={kit_uid} /></span>
     {#each tables as t}
-        <button class="{btn}" on:click={ () => fill(t, false) }>{t}</button>
+        <button class="{btn}" onclick={() => fill(t, false)}>{t}</button>
     {/each}
 </div>
 <hr>

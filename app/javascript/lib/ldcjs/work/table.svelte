@@ -1,13 +1,11 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import { create_download_tsv, create_download_url } from '../download_helper';
     import { btn } from './buttons';
     export let columns;
     export let rows;
-    export let use_filter = false;
-    export let key_column;
-    export let height = "80";
+    export let use_filter = true;
+    export let key_column = "id";
+    export let height = "400";
     export let column_border = false;
     export let download = false;
     export function get_selected_key(){
@@ -31,6 +29,7 @@
         }
         return a;
     }
+    export let selectedf;
     let sorti = -1;
     let sortd = true;
     let sort_key;
@@ -76,7 +75,7 @@
     export let selected = null;
     function click_select(e){
         selected = this.dataset.key;
-        dispatch('selected', e);
+        selectedf(selected, e);
     }
     let text_red;
     export function set_text_red(x){
@@ -99,12 +98,15 @@
         }
         return false;
     }
-    export let index = {};
+    let index = {};
+    export let indexf = () => null;
+    indexf(index);
     if(key_column){
         for(let x of rows){
             index[x[key_column]] = x;
         }
     }
+    // indexf(index);
     let use_menu_filters = false;
     let filters = {};
     let all = {}
@@ -191,7 +193,7 @@
             {#if download}
                 <div class="float-right">
                     <details class="details-reset details-overlay details-overlay-dark">
-                        <summary class="{btn}" on:click={download_reset}>
+                        <summary class="{btn}" onclick={download_reset}>
                             <i class="fa fa-download"></i>
                         </summary>
                         <details-dialog class="Box Box--overlay anim-fade-in fast">
@@ -226,12 +228,12 @@
                                     <!-- svelte-ignore a11y-missing-attribute -->
                                     <a bind:this={link} download={filename}>{ url ? "Download" : ""}</a>
                                     {#if !url}
-                                        <button type="button" class="{btn}"   on:click={downloadf}>Create</button>
+                                        <button type="button" class="{btn}"   onclick={downloadf}>Create</button>
                                     {/if}
                                 </form>
     <!--                             <div>
-                                    <button type="button" class="{btn}"   on:click={downloadf}>Full Table</button>
-                                    <button type="button" class="{btn}"   on:click={downloadm}>Matched Rows Only</button>
+                                    <button type="button" class="{btn}"   onclick={downloadf}>Full Table</button>
+                                    <button type="button" class="{btn}"   onclick={downloadm}>Matched Rows Only</button>
                                 </div>
      -->                            <div>Preview</div>
                                 <pre id="preview" class=border>
@@ -239,7 +241,7 @@
                                 </pre>
                             </div>
                             <div class="Box-footer text-right">
-                                <!-- <button type="button" class="{btn}"   data-close-dialog on:click={downloadf}>download</button> -->
+                                <!-- <button type="button" class="{btn}"   data-close-dialog onclick={downloadf}>download</button> -->
                             </div>
                         </details-dialog>
                     </details>
@@ -283,7 +285,7 @@
         <tr>
             {#each columns as x, i}
                 <th class="sticky top-0 text-left {x[2]} p-2 {i == sorti ? 'bg-yellow-100' : 'bg-blue-100'}"
-                on:click={header} data-i={i}>
+                onclick={header} data-i={i}>
                     <div class="flex">
                         {x[0]}
                         {#if sorti == i}
@@ -302,6 +304,7 @@
             {/each}
         </tr>
         </thead>
+        <tbody>
         {#each rows as x, i}
             {#if match(x, i) && filter.length > -1 && filters}
                 <tr class="
@@ -310,7 +313,7 @@
                     {x[key_column] == text_red ? 'bg-red-100': '' }
                     {i % 2 ? 'oddd' : ''}
                 "
-                on:click={click_select} data-key={x[key_column]}>
+                onclick={click_select} data-key={x[key_column]}>
                     {#each columns as y, i}
                         <td class="{y[2]} p-2 break-word {column_border ? "border-x" : ""}">
                             {#if y[3] == 'html'}
@@ -320,7 +323,7 @@
                             {:else if y[3] == 'f'}
                                 <!-- svelte-ignore a11y-no-static-element-interactions -->
                                 <!-- svelte-ignore a11y-click-events-have-key-events -->
-                                <div on:click={ y[4](x, y[1]) }>{x[y[1]]}</div>
+                                <div onclick={ () => y[4](x, y[1]) }>{x[y[1]]}</div>
                             {:else if x[y[1]]}
                                 {x[y[1]]}
                             {:else}
@@ -331,6 +334,7 @@
                 </tr>
             {/if}
         {/each}
+        </tbody>
     </table>
     </div>
 </div>

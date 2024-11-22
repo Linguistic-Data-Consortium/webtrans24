@@ -74,7 +74,7 @@
     <Table
         bind:this={table}
         bind:selected={kit_id}
-        bind:index={kit_index}
+        indexf={x => kit_index = x}
         {columns}
         {rows}
         use_filter={true}

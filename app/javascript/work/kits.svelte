@@ -1,22 +1,21 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import { getp, patchp } from '../lib/ldcjs/getp';
     import Help from './help.svelte'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Modal from '../modal.svelte'
-    import Flash from './flash.svelte'
     import Kit from './kit.svelte'
     import UploadKitList from './upload_kit_list.svelte'
     import DownloadTranscripts from '../lib/ldcjs/waveform/download_transcripts.svelte';
     import Spinner from '../lib/ldcjs/work/spinner.svelte';
     import { btn, dbtn } from '../lib/ldcjs/work/buttons';
+    import { toast } from "svelte-sonner";
     export let help;
     export let project_id;
     export let task_id;
     export let task_admin = false;
     // export let kits;
     export let task_users;
+    export let reload;
     let name;
     let p;
     function get(){ p = getp(`/kits/task/${task_id}`) }
@@ -32,15 +31,16 @@
         [ 'Broken Comment', 'broken_comment', 'col-1' ],
         [ 'Updated At', 'updated_at', 'col-1' ]
     ];
-    let flash_type = null;
-    let flash_value;
     function response(data){
-        if(data.error){
-            flash_type = 'error';
+        let flash_value;
+        if(!data){
+            toast.error('bad response');
+        }
+        else if(data.error){
             flash_value = data.error.join(' ');
+            toast.error(flash_value);
         }
         else{
-            flash_type = 'success';
             if(data.deleted){
                 flash_value = data.deleted;
             }
@@ -51,7 +51,8 @@
             else{
                 flash_value = "created " + data.task.name;
             }
-            setTimeout( () => dispatch('reload', '') , 1000 );
+            toast.success(flash_value);
+            setTimeout( () => reload() , 1000 );
         }
     }
     function create(){
@@ -66,7 +67,7 @@
     function back(){
         pp = null;
     }
-    function reload(e){
+    function reload2(e){
         pp = null;
         get();
     }
@@ -78,8 +79,7 @@
         }
         let o = { uids: uids.join(',') };
         if(!table.match_attempted()){
-            flash_type = 'error';
-            flash_value = "you haven't matched any kits";
+            toast.error("you haven't matched any kits");
         }
         else if(new_user || new_state){
             if(new_user){
@@ -94,13 +94,12 @@
             ).then(response);
         }
         else{
-            flash_type = 'error';
-            flash_value = 'neither user nor state specified';
+            toast.error('neither user nor state specified');
         }
     }
     let new_user;
     let new_state;
-    let states = [ 'unassigned', 'assigned', 'done', 'broken', 'excluded' ];
+    let states = [ 'unassigned', 'assigned', 'done', 'broken', 'excluded', 'priority' ];
     const reassignm = {
         title: 'Create Kits',
         buttons: [
@@ -127,18 +126,16 @@
               {task_admin}
               {task_users}
               {...v}
-              on:reload={reload}
             />
                 <!-- {project_id} -->
                  <!-- {task_id} -->
             <!-- {task_id} {kit_index[task_id].name} -->
         {/await}
     {:else}
-        <Flash {flash_type} {flash_value} />
         <div class="flex justify-around mb-4">
             {#if task_admin}
                 <div>All Kits</div>
-                <UploadKitList {task_id} on:reload={reload} />
+                <UploadKitList {task_id} {reload2} />
                 <Modal {...reassignm}>
                     <div slot=summary>
                         Bulk Reassign
@@ -217,7 +214,7 @@
         <Table
             bind:this={table}
             bind:selected={kit_id}
-            bind:index={kit_index}
+            indexf={x => kit_index = x}
             {columns}
             {rows}
             use_filter={true}

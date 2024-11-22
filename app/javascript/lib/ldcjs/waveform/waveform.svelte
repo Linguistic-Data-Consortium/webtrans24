@@ -1,11 +1,20 @@
 <script>
-    import { ArrowUpFromLine, ArrowDownToLine, Check, X } from 'lucide-svelte';
+    const cache2 = {};
+    let last_audio;
+    import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
+    import * as Dialog from "$lib/components/ui/dialog"
+    import { Textarea } from "$lib/components/ui/textarea";
+    import { Button, buttonVariants } from "$lib/components/ui/button";
+    import { Label } from "$lib/components/ui/label";
+    import { Input } from "$lib/components/ui/input";
+    import * as RadioGroup from "$lib/components/ui/radio-group";
+    import { ArrowUpFromLine, ArrowDownToLine, Check, X, CircleCheck } from 'lucide-svelte';
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     const dispatch = createEventDispatcher();
-    import { btn, cbtn, dbtn, btn1 } from '../work/buttons'
+    import { btn, cbtn, dbtn, btn1 } from '../work/buttons';
     import { event } from '../../../guides/guide';
     import { create_action } from '../../../work/controllers';
-    import { settings, active_docid, active_channel, sections, segments, undefined_segments } from './stores';
+    import { settings, active_docid, active_channel, sections, segments, undefined_segments, state } from './stores';
     import { times, selection, round_to_3_places, round_to_6_places } from './times';
     import { srcs, sources_object_add_node, add_source_audio_collision } from './sources_stores';
     import { play_src_with_audio_id, redactions, local_redactions, redaction_docid } from './play';
@@ -21,6 +30,7 @@
         stop_playing
     } from '../audio/main';
     import {
+        set_ldc,
         done,
         skip,
         broken,
@@ -51,6 +61,7 @@
     import Spinner from '../work/spinner.svelte';
     import parse_sad_with_aws from './parse_sad_with_aws';
     import parse_tsv from './parse_tsv2';
+    import parse_tsv0 from './parse_tsv';
     import parse_tdf from './parse_tdf';
     import { create_download_url } from '../download_helper';
     import { create_transcript } from './download_transcript_helper'
@@ -63,12 +74,14 @@
     import { S3Client, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand } from "@aws-sdk/client-s3";
     import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
     import { refreshToken, getSignedUrlPromise, putObject, s3url } from '../aws_helper';
+    import { get_hlt_promise } from '../aws';
 
     keymap.beg = keymap.selection;
     keymap.end = keymap.selection;
     let debug = false;
     let experimental;
     export let ldc;
+    set_ldc(ldc);
     const ns = ldc.ns;
     export let source_uid;
     $: redactiondocid = redaction_docid(source_uid);
@@ -78,12 +91,14 @@
     export let permissions;
     export let constraint_export_transcript;
     export let constraint_export_transcript_to_task_admin;
+    export let constraint_import_transcript;
     export let constraint_import_transcript_auto;
     export let constraint_rtl;
     export let constraint_speakers;
     export let constraint_sections;
     export let constraint_section_order_forced;
     export let constraint_add_asr_segments;
+    export let constraint_asr_korean;
     export let xlass_def_id;
     const kit_id = ldc.obj2._id;
 
@@ -245,6 +260,7 @@
         // w.update_waveform = true;
         // this.draw_wave_display()
     }
+    onDestroy( () => intt ? clearInterval(intt) : null);
     onMount( () => {
         width = div.offsetWidth;
         // times.update( (x) => {
@@ -255,12 +271,17 @@
         // } );
         keyboard.focus();
         if(constraint_add_asr_segments && ldc.nodes.size == 0){
-            xasr().then(xasrr);
+            let type = constraint_asr_korean ? 'asr5' : 'asr3';
+            if(window.ldc.vars.task_id == 169) type = 'asr4';
+            xasr(type).then(xasrr);
         }
         request_animation_frame_loop_init();
         ldc.vars.loop.set('play_callback', play_callback);
         ldc.vars.loop.set('waveform_callback', () => callf(waveform_play_callback));
+        console.log('here')
+        console.log(dialog_upload_transcript);
         set_urlsf();
+        console.log(dialog_upload_transcript);
     } );
     function canvas0_mount(canvas){
         console.log(canvas)
@@ -366,6 +387,47 @@
             } );
         }
     }
+    let intt;
+    let dialog_upload_transcript;
+    function create_transcript_retrieve2(){
+        const o = ldc.maino;
+        let r = Math.random();
+        console.log('r ', r);
+        // why doesn't bind:dialog_upload_transcript work?
+        let d = document.getElementById('dialog_upload_transcript');
+        create_transcript_auto = true;
+        if(d){
+            if(o && o.transcript){
+                o.transcript.then( (x) => {
+                    console.log('modal')
+                    console.log(x);
+                    // auto = x.found_transcript;
+                    if(x.use_transcript == 'tsv'){
+                        create_transcript_text = x.found_transcript;
+                        const j = parse_tsv0(create_transcript_text);
+                        intt = setInterval( () => set_create_transcript_json(j, r), 1000);
+                    }
+                    console.log(create_transcript_json)
+                    d.showModal()
+                    // if(x.use_transcript == 'tdf') tdf = true;
+                    // if(x.use_transcript == 'sad_with_aws') sad_with_aws = true;
+                    if(document.querySelectorAll('.segment').length > 0) auto = false;
+                } );
+            }
+            else{
+                console.log('no transcript ', r)
+            }
+        }
+        else{
+            console.log('waiting');
+            setTimeout( () => create_transcript_retrieve2(), 1000);
+        }
+    }
+    function set_create_transcript_json(x, r){
+        console.log('setting4 ', r);
+        rando = Math.random();
+        create_transcript_json = x;
+    }
     function create_transcript_upload(){
         const r = new FileReader();
         let o = null;
@@ -390,7 +452,7 @@
     function create_transcript_add_save(){
         create_transcript_auto = false;
         const f = () => window.location.reload();
-        add_save_asr(json, 'A', f);
+        add_save_asr(create_transcript_json, 'A', f);
         // setTimeout( () => {
         //     add_timestamps2(json, update_segments);
         //     add_cb( () => {
@@ -520,6 +582,20 @@
                     return 'displaying segments...';
                 } );
             }
+            else if(true){
+                add_which = 'asr';
+                dialog_asr.showModal();
+                const cb = () => dialog_asr.close();
+                const f = () => window.location.reload();
+                add_sad_p2_message = 'running asr...';
+                const type = 'asr4';
+                add_sad_p2 = xasr(type).then(xasrr);
+                add_sad_p3 = add_sad_p2.then(() => {
+                    cb();
+                    // f();
+                    return 'displaying segments...';
+                });
+            }
             else{
                 add_sad_p2 = add_asr_send(source_uid);
                 // p2 = Promise.resolve( { ch1: [] });
@@ -543,17 +619,29 @@
                 } );
             }
         }
+        if(x == 'add_asr_korean'){
+            add_which = 'asr';
+            dialog_asr.showModal();
+            const cb = () => dialog_asr.close();
+            add_sad_p2_message = 'running asr...';
+            const type = 'asr6';
+            add_sad_p2 = xasr(type).then(xasrr);
+            add_sad_p3 = add_sad_p2.then(() => {
+                cb();
+                return 'displaying segments...';
+            });
+        }
         if(x == 'upload_transcript'){
             dialog_upload_transcript.showModal()
             // if(constraint_import_transcript_auto) data_set_file_name = docid;
             if(data_set_file_name) create_transcript_retrieve();
             if(create_transcript_auto) create_transcript_text = create_transcript_auto;
-            if(ns.task_id == 77 || ns.task_id == 79){
-                autoloading = true;
-                create_transcript_autox = false;
-                create_transcript_json = parse_sad_with_aws(create_transcript_text);
-                create_transcript_add_save();
-            }
+            // if(ns.task_id == 77 || ns.task_id == 79){
+            //     autoloading = true;
+            //     create_transcript_autox = false;
+            //     create_transcript_json = parse_sad_with_aws(create_transcript_text);
+            //     create_transcript_add_save();
+            // }
         }
         if(x == 'download_transcript') dialog_download_transcript.showModal();
         if(x == 'close_kit'){
@@ -611,6 +699,9 @@
         else if(f == 'play_current_span_or_play_stop'){
             play_current_span_or_play_stop();
         }
+        else if(f == 'play_from_selection_beg_or_play_stop'){
+            play_from_selection_beg_or_play_stop();
+        }
         // else if(f == 'add_transcript_line_based_on_play_head'){
         //     add_transcript_line_based_on_play_head();
         // }
@@ -646,6 +737,9 @@
         // }
         else if(f == 'play_current_span'){
             play_current_span();
+        }
+        else if(f == 'open_mode_menu'){
+            open_mode_menu();
         }
         else if(f == 'set_mode_to_window'){
             set_mode('window');
@@ -808,11 +902,13 @@
                 // resolve this one in parallel
                 if(d.tsv){
                     let found = s3url(d.tsv);
-                    getSignedUrlPromise(found.bucket, found.key)
+                    o.transcript = getSignedUrlPromise(found.bucket, found.key)
                     .then( getp )
                     .then(function(d){
-                        that.use_transcript = 'tsv';
-                        that.found_transcript = d;
+                        return {
+                            use_transcript: 'tsv',
+                            found_transcript: d
+                        };
                     });
                 }
 
@@ -895,6 +991,9 @@
     function set_urlsf(){
     set_urls(source_uid).then(function(o){
         const docid = o.wav.replace(/.*\//,'').replace(/\.(wav|flac)[:AB]?/,'');
+        if(constraint_import_transcript_auto && ldc.nodes.size == 0){
+            create_transcript_retrieve2();
+        }
         postp('/redactions', { wav: docid }).then((x) => {
             const b = x.ok != 0;
             redactions.set(docid, b);
@@ -945,7 +1044,7 @@
         let ew = width / duration;
         scrollbar_x = wave_display_offset * ew;
         scrollbar_width = wave_display_length * ew;
-        event.dispatch(this, 'drew_scroll_cursor');
+        // event.dispatch(this, 'drew_scroll_cursor');
         if(wave_display_length) draw_waveformi(0);
         if(two) draw_waveformi(1);
         srcs_update(srcso);
@@ -1077,7 +1176,6 @@
 
 
 
-    const cache2 = {};
     function draw_buffer(k){
         lastk = k;
         if(disable_waveform) return;
@@ -1576,6 +1674,7 @@
     }
     
     function mousedown_helper(e, that){
+        state.set('mousedown_waveform');
         create_action('down');
         const x = (e.clientX - that.getBoundingClientRect().left);
         // mouse.update( (m) => {
@@ -1828,10 +1927,17 @@
         console.log(source_uid);
         play_src_with_audio_id(source_uid, wave_docid, src, f);
     }
-    
+
+    let play_current_span_or_play_stop_last;
     export function play_current_span_or_play_stop(){
-        if(wave_selection_length == 0)
-            play_stop();
+        if(wave_selection_length == 0){
+            if(wave_selection_offset == play_current_span_or_play_stop_last)
+                play_stop();
+            else{
+                play_from_selection_beg();
+                play_current_span_or_play_stop_last = wave_selection_offset;
+            }
+        }
         else
             play_current_span();
     }
@@ -2080,7 +2186,8 @@
     const dialog_services_keys = {
         "h": "main",
         '1': "add_sad",
-        '2': "add_asr"
+        '2': "add_asr",
+        '3': "add_asr_korean"
     };
     function dialog_services_keydown(e){
         dialog_services.close();
@@ -2088,18 +2195,21 @@
     }
     let dialog_sad;
     let dialog_asr;
-    let dialog_upload_transcript;
     let dialog_download_transcript;
     let dialog_close_kit;
     let dialog_close_kit_audit;
     let done_comment;
     let broken_comment;
     function dialog_close_kit_donef(){
+        console.log(dialog_close_kit_audit);
+        return;
         let c = null;
         if(done_comment && done_comment.length) c = done_comment;
         done(c);
     }
     function dialog_close_kit_brokenf(){
+        console.log(broken_comment);
+        return;
         let c = null;
         if(broken_comment && broken_comment.length) c = broken_comment;
         broken(c);
@@ -2317,7 +2427,6 @@
 
 
 
-    let last_audio;
     let last_buffer;
     function convert_seconds_to_samples(seconds){
         return Math.floor(seconds * wave_buffer_sample_rate);
@@ -2627,6 +2736,64 @@
             kb.map[c] = `setf_${c}`;
             kb.delegate[kb.map[c]] = () => x;
         }
+    }
+
+    function three_way_split_on_selection(input){
+        return three_way_split(input.value, input.selectionStart, input.selectionEnd);
+    }
+
+    function three_way_split(value, a, b){
+        const x = value.substring(0, a);
+        const y = value.substring(a, b);
+        const z = value.substring(b);
+        return({ x, y, z });
+    }
+
+    function insert_surrounding_tags(type){
+        const input = ttextarea; // e.detail.e.target;
+        let i = input.selectionStart;
+        while(i > 0 && t_value[i-1] != ' ') i--;
+        const a = i;
+        i = input.selectionEnd;
+        while(i < t_value.length && t_value[i] != ' ') i++;
+        const b = i;
+        const { x, y, z } = three_way_split(t_value, a, b);
+        if(type == 'unintelligible'){
+            t_value = `${x}((${y}))${z}`;
+        }
+        else if(type == 'redact'){
+            const span = {
+                offset: wave_selection_offset,
+                length: wave_selection_length,
+                transcript: y,
+                speaker: 'redacted'
+            };
+            add_audio_to_list(wave_docid, null, null, span);
+            t_value = `${x} <redact>${y}</redact> ${z}`;
+        }
+        // if(ldc.nodes){
+        //     console.log('here')
+        //     console.log(ldc.segmap.get(x.iid));
+        //     const text = ldc.obj2.xlass_def_id == 2 ? 'Text' : 'Transcription';
+        //     ldc.segmap.get(x.iid).nodes.get(text).node_value.set( { value: edit } );
+        //     waveform.component.set_active_transcript_line(null);
+        //     segs = segs;
+        // }
+        // change_value(iid, edit, f);
+        setTimeout( () => {
+            input.selectionStart = input.selectionEnd = x.length + y.length + 4;
+        }, 100);
+
+    }
+
+    function insert_laugh(){
+        const input = ttextarea;
+        const { x, y, z } = three_way_split_on_selection(input);
+        t_value = `${x}${y}{laugh}${z}`;
+
+        setTimeout( () => {
+            input.selectionStart = input.selectionEnd = x.length + y.length + 7;
+        }, 100);
     }
 
     function set_speaker(h){
@@ -3108,6 +3275,7 @@
         //     return;
         // }
         if(e.detail.userf == 'set_speaker')        set_speaker(x);
+        else if(e.detail.userf == 'open_mode_menu') open_mode_menu();
         else if(e.detail.userf == 'show_sections')  show_sections();
         else if(e.detail.userf == 'open_section')  open_section(x);
         else if(e.detail.userf == 'close_section') close_section(h, update_segments);
@@ -3115,7 +3283,9 @@
         else if(e.detail.userf == 'play_head_menu')      play_head_menu(h);
         else if(e.detail.userf == 'delete_active_transcript_line') control_d(x);
         else if(e.detail.userf == 'generic_next')                  generic_next(x);
-        else if(e.detail.userf == 'tag_unintelligible')            save_unintelligible(e, x);
+        else if(e.detail.userf == 'tag_redact')                    insert_surrounding_tags('redact');
+        else if(e.detail.userf == 'tag_unintelligible')            insert_surrounding_tags('unintelligible');
+        else if(e.detail.userf == 'tag_laugh')                     insert_laugh();
         else if(e.detail.userf == 'split_segment_at_cursor')            split_segment_at_cursor(cursortime, split_line_margin, update_segments);
         else if(e.detail.userf == 'merge_with_following_segment')            merge_with_following_segment(find_active_id(), wmap, update_segments);
         else if(e.detail.userf == 'play_current_span') play_current_span();
@@ -3254,13 +3424,15 @@
     function current_segment_iid(){
         return parseInt(index_segments_by_id.get(last_active_segment).iid) + 2;
     }
+    let open_dialog_redact = false;
     function redactcb(){
         redact_mode = last_speaker_used == 'redacted';
         if(redact_mode){
             last_speaker_used = penultimate_speaker_used;
             redact_from = get_redact_from();
             if(redact_from){
-                setTimeout(() => dialog.showModal(), 100);
+                // setTimeout(() => dialog.showModal(), 100);
+                open_dialog_redact = true;
             }
             else{
                 if(redact_from !== '') alert('no overlapping segment');
@@ -3268,7 +3440,7 @@
             }
         }
         else{
-            dialog.close();
+            open_dialog_redact = false;
         }
     }
     function get_redact_from(){
@@ -3302,9 +3474,9 @@
     let asro = {};
     const asr_items = new Map();
 
-    async function xasr(asr){
+    async function xasr(type){
         if(asrp) return;
-        asrp = add_asr_sendx(docid).then(xasr_process)
+        asrp = add_asr_sendx(docid, type).then(xasr_process)
         // asrp = add_asr_sendx2(docid);
         return asrp;
     }
@@ -3350,23 +3522,23 @@
             console.log(x)
             asro = {};
             asro.segments = [];
-                let y = x.results;
-                for(let j = 0; j < y.items.length; j++){
-                    let z = y.items[j];
-                    let zz = `${z.start_time},${z.end_time},${z.speaker_label}`;
-                    asr_items.set(zz, z);
-                    if(z.type == 'pronunciation'){
-                        if(z.alternatives.length > 1){
-                            asro.error = 'multiple alternatives';
-                            break;
-                        }
-                        z.token = z.alternatives[0].content;
-                    }
-                    if(z.type == 'punctuation'){
-                        z.punc = z.alternatives[0].content;
-                    }
-                }
-            asro.items = x.results.items;
+                // let y = x.results;
+                // for(let j = 0; j < y.items.length; j++){
+                //     let z = y.items[j];
+                //     let zz = `${z.start_time},${z.end_time},${z.speaker_label}`;
+                //     asr_items.set(zz, z);
+                //     if(z.type == 'pronunciation'){
+                //         if(z.alternatives.length > 1){
+                //             asro.error = 'multiple alternatives';
+                //             break;
+                //         }
+                //         z.token = z.alternatives[0].content;
+                //     }
+                //     if(z.type == 'punctuation'){
+                //         z.punc = z.alternatives[0].content;
+                //     }
+                // }
+            asro.items = x;//.results.items;
             if(debug) console.log(asro);
             if(asro.error) console.error(asro.error);
             else           asro.show = true;
@@ -3410,54 +3582,56 @@
     // }
     let virtual_iid = 0;
     function xasr2(asro_i){
-        const segment = {
-            virtual: true,
-            iid: `virtual-${virtual_iid++}`,
-            tokens: [],
-            text: ''
-        };
-
-        if(asro_i == asro.items.length){
-            alert('finished');
-            return;
-        }
-        let i = 0;
-        for(i = asro_i; i < asro.items.length; i++){
-            const x = asro.items[i];
-            if(!segment.beg){
-                segment.beg = parseFloat(x.start_time);
-                segment.speaker = x.speaker_label;
-            }
-            if(segment.speaker == x.speaker_label){
-                if(x.type == 'pronunciation'){
-                    if(segment.end && x.start_time - segment.end > 0.25) break;
-                    segment.end = parseFloat(x.end_time);
-                    // segment.tokens.push(x.alternatives);
-                    if(segment.text.length) segment.text += ' ';
-                    segment.text += x.alternatives[0].content;
-                }
-                if(x.type == 'punctuation'){
-                    // segment.punc = x.alternatives[0].content;
-                    // asr_items_i++;
-                    // break;
-                    // segment.tokens.push(x.alternatives);
-                    segment.text += x.alternatives[0].content;
-                }
-                // asro.i = i;
-            }
-            else{
-                break;
-            }
-        }
-        // if(segment.tokens.every( x => x.length == 1)){
-        //     segment.text = segment.tokens.map( x => x[0].content ).join(' ');
-        //     if(segment.punc) segment.text += segment.punc;
+        let segment = asro.items[asro_i];
+        // const segment = {
+        //     virtual: true,
+        //     iid: `virtual-${virtual_iid++}`,
+        //     tokens: [],
+        //     text: ''
+        // };
+        // if(asro_i == asro.items.length){
+        //     alert('finished');
+        //     return;
         // }
+        // let i = 0;
+        // for(i = asro_i; i < asro.items.length; i++){
+        //     const x = asro.items[i];
+        //     if(!segment.beg){
+        //         segment.beg = parseFloat(x.start_time);
+        //         segment.speaker = x.speaker_label;
+        //     }
+        //     if(segment.speaker == x.speaker_label){
+        //         if(x.type == 'pronunciation'){
+        //             if(segment.end && x.start_time - segment.end > 0.25) break;
+        //             segment.end = parseFloat(x.end_time);
+        //             // segment.tokens.push(x.alternatives);
+        //             if(segment.text.length) segment.text += ' ';
+        //             segment.text += x.alternatives[0].content;
+        //         }
+        //         if(x.type == 'punctuation'){
+        //             // segment.punc = x.alternatives[0].content;
+        //             // asr_items_i++;
+        //             // break;
+        //             // segment.tokens.push(x.alternatives);
+        //             segment.text += x.alternatives[0].content;
+        //         }
+        //         // asro.i = i;
+        //     }
+        //     else{
+        //         break;
+        //     }
+        // }
+        // // if(segment.tokens.every( x => x.length == 1)){
+        // //     segment.text = segment.tokens.map( x => x[0].content ).join(' ');
+        // //     if(segment.punc) segment.text += segment.punc;
+        // // }
 
-        segment.docid = docid;
+        segment.docid = segment.channel == 'ch_1' ? docids[1] : docids[0];
         segment.offset = segment.beg;
+        segment.length = round_to_3_places(segment.end - segment.beg);
         segment.transcript = segment.text;
         vvsegs.push(segment);
+        return asro_i + 1;
         return i;
     }
 
@@ -3664,13 +3838,14 @@
                 text: ldc.$(x).find(sel3).data().value.value || '',
                 speaker: ldc.$(x).find(sel4).data().value.value || '',
                 section: null,
-                error: null
+                error: new Map()
             };
             let n1 = c1.text.match(/\(/g);
             if(!n1) n1 = [];
             let n2 = c1.text.match(/\)/g);
             if(!n2) n2 = [];
-            if(c1.text && n1.length != n2.length) c1.error = "unbalanced parens";
+            if(c1.text && n1.length != n2.length) c1.error.set("unbalanced parens");
+            else                                  c1.error.delete("unbalanced parens")
             // if(c1.text && n1 && n2) c1.error = 'x'
             segments.push(c1);
         });
@@ -4079,7 +4254,7 @@
                         text: '', // $(x).find(sel3).data().value.value || '',
                         speaker: '', //$(x).find(sel4).data().value.value || '',
                         section: null,
-                        error: null,
+                        error: new Map(),
                         nodes: v.nodes
                     }
 
@@ -4110,6 +4285,12 @@
                         } );
                         c1.Text = v.nodes.get('Text').node_value.subscribe( (x) => {
                             c1.text = x.value;
+                            let n1 = c1.text.match(/\(/g);
+                            if(!n1) n1 = [];
+                            let n2 = c1.text.match(/\)/g);
+                            if(!n2) n2 = [];
+                            if(c1.text && n1.length != n2.length) c1.error.set("unbalanced parens");
+                            else                                  c1.error.delete("unbalanced parens");
                             sort_segments();
                         } );
                     }
@@ -4138,11 +4319,6 @@
                         speakersm.set(x.value, x.value);
                         segments.update( (x) => x );
                     } );
-                    // let n1 = c1.text.match(/\(/g);
-                    // if(!n1) n1 = [];
-                    // let n2 = c1.text.match(/\)/g);
-                    // if(!n2) n2 = [];
-                    // if(c1.text && n1.length != n2.length) c1.error = "unbalanced parens";
                     // // if(c1.text && n1 && n2) c1.error = 'x'
 
                     // if(!c1.beg && c1.beg != 0){
@@ -4191,11 +4367,13 @@
         sections.set(results);
     }
 
+    let ttextarea;
     let t_previous = new Map();
     let t_iid;
     let t_value;
     let t_readonly;
     let t_timeout;
+    $: t_rows = t_value ? Math.ceil(t_value.length / 70) : 1;
     function t_blur(){
         if(t_timeout){
             clearTimeout(t_timeout);
@@ -4203,6 +4381,7 @@
         }
     }
     function t_keydown(e, x){
+        if(e.key == '/') e.preventDefault();
         if(t_readonly){
             if(e.key == 'y') virtual_yes(x);
             if(e.key == 'n'){ virtual_no(x); return; }
@@ -4229,7 +4408,7 @@
             window.wait_for(sel, () => {
                 let d = window.gdata(sel);
                 t_iid = d.meta.id;
-                const tvalue = d.value;        
+            const tvalue = d.value;        
                 if(tvalue){
                     t_previous.set(t_iid, tvalue.value);
                     t_value = tvalue.value;
@@ -4242,14 +4421,15 @@
     }
     // let t_first = true;
     function t_update(x){
-        console.log(x)
         // if(t_first) return;
         if(t_timeout) clearTimeout(t_timeout);
         t_timeout = setTimeout( () => t_patch(t_iid, x) , 1000 );
-        console.log('done')
+        console.log('text updated')
     }
     $: t_update(t_value);
-    function t_patch(iid, value){
+    function t_patch(iid, v){
+        const value = v?.replace(/\r|\n/g, '');
+        console.log(value);
         if(t_timeout) clearTimeout(t_timeout);
         // if(ldc.nodes) transcription.nodes.get('Transcription').node_value.set( { value: value } );
         const f = () => { update_segments(); change_handle(); };
@@ -4362,7 +4542,7 @@
       };
       kb.delegate.escape = function() {
         // id =  $('.crnt .Speaker').data().meta.id
-        kb.reset();
+        // kb.reset();
         input_screen_close();
         input_screen_resolvef(null);
       };
@@ -4473,7 +4653,8 @@
         let p = add_sad(x);
         let p2 = p.then( (url) => {
             const o = { type: 'sad', data: { audio: url } };
-            return ldc.sad(o, function(data) {
+            if(x.startsWith('s3://')) return get_hlt_promise(x, 'sad').then(check_channels);
+            return hlt_sad(o, function(data) {
                 return check_channels(data);
             } );
         } );
@@ -4535,44 +4716,7 @@
     }
 
     function add_asr_send(path){
-        if(!path.startsWith("s3://")){
-            if(ldc.resources.bucket){
-                path = `s3://${ldc.resources.bucket}/${path}`;
-            }
-            else{
-                alert(`can't run asr on ${source_uid}`);
-                return null;
-            }
-        }
-        const o = { type: 'asr', status: 'pending', data: { audio: path } };
-        // putObject('coghealth', 'test1', o);
-        const id = `promises/${(new Date()).getTime()}`;
-        putObject('promise-uploads', id, JSON.stringify(o), "application/json");
-        // let p = o;
-        return new Promise( (resolve, reject) => {
-            const interval = setInterval( () => {
-                getSignedUrlPromise('promise-uploads', id)
-                .then(getp)
-                .then( (x) => {
-                    console.log(x);
-                    // p = x;
-                    if(x.status == 'done'){
-                        clearInterval(interval);
-                        // const fn = source_uid.replace(/.+\//, '');
-                        // getSignedUrlPromise('promise-uploads', `ipc/transcripts/segmented/${fn}.json`).then( (x) => {
-                        const y = x.data.segments.replace('s3://promise-uploads/','');
-                        return getSignedUrlPromise('promise-uploads', y)
-                        .then(getp)
-                        .then( (x) => resolve( { ch1: x[0], ch2: (x.length == 2 ? x[1] : []) } ) );
-                    }
-                } );
-            }, 1000);
-
-            // ldc_services.asr(o, function(data) {
-            //     console.log(JSON.stringify(o));
-            //     // check_channels(data);
-            // } );
-        } );
+        return add_asr_sendx(path, 'asr');
     }
 
     function add_asr_sendx2(path){
@@ -4581,45 +4725,21 @@
         .then(getp);
     }
 
-    function add_asr_sendx(path){
+    function add_asr_sendx(path, type){
         if(!path.startsWith("s3://")){
             if(ldc.resources.bucket){
                 path = `s3://${ldc.resources.bucket}/${path}`;
+            }
+            else if(ldc.resources.original_s3_key){
+                path = `s3://image-description/${ldc.resources.original_s3_key}`;
             }
             else{
                 alert(`can't run asr on ${source_uid}`);
                 return null;
             }
         }
-        const o = { type: 'asr2', status: 'pending', data: { audio: path } };
-        // putObject('coghealth', 'test1', o);
-        const id = `promises/${(new Date()).getTime()}`;
-        putObject('promise-uploads', id, JSON.stringify(o), "application/json");
-        // let p = o;
-        return new Promise( (resolve, reject) => {
-            const interval = setInterval( () => {
-                getSignedUrlPromise('promise-uploads', id)
-                .then(getp)
-                .then( (x) => {
-                    console.log(x);
-                    // p = x;
-                    if(x.status == 'done'){
-                        clearInterval(interval);
-                        // const fn = source_uid.replace(/.+\//, '');
-                        // getSignedUrlPromise('promise-uploads', `ipc/transcripts/segmented/${fn}.json`).then( (x) => {
-                        const y = x.data.segments.replace('s3://promise-uploads/','');
-                        return getSignedUrlPromise('promise-uploads', y)
-                        .then(getp)
-                        .then( (x) => resolve( x ) );
-                    }
-                } );
-            }, 1000);
-
-            // ldc_services.asr(o, function(data) {
-            //     console.log(JSON.stringify(o));
-            //     // check_channels(data);
-            // } );
-        } );
+        console.log('trying2 asr on ', path);
+        return get_hlt_promise(path, type);
     }
 
     function addasr1(source_uid){
@@ -4630,7 +4750,68 @@
         const key = source_uid.replace('s3://ldc-anno-difp-data/', '').replace('.wav', '.tsv');
         return getSignedUrlPromise('ldc-anno-difp-data', key);
     }
-
+    let rando = 0;
+    let mode_menu_open = false;
+    function open_mode_menu(){
+        mode_menu_open = true;
+    }
+    function mode_keydown(e){
+        const k = e.detail.originalEvent.key;
+        if(k == 'c'){
+            set_mode('cursor');
+        }
+        else if(k == 'w'){
+            console.log('w')
+            set_mode('window');
+        }
+        else if(k == 'b'){
+            set_mode('beg');
+        }
+        else if(k == 'e'){
+            set_mode('end');
+        }
+        if(['c', 'w', 'b', 'e'].includes(k)){
+            mode_menu_open = false;
+            event.dispatch('drew_mode');
+        }
+    }
+    async function hlt_sad(o, ff){
+        const endpoint = 'https://hlt.ldcresearch.org';
+        const data = await getp_simple(endpoint);
+        const promises = data.promises;
+        const create_promises_url = `${endpoint}${promises.create_promise.uri}`;
+        // url = 'https://nieuw-hlt.ldc.upenn.edu/promises'
+        // url = url.replace ':4567', '' if external
+        return postp(create_promises_url, o).then( function(oo) {
+            var f, url2;
+            console.log('HERE');
+            console.log(oo);
+            url2 = oo.promiseStatusUrl;
+            url2 = `${create_promises_url}/${oo.id}`;
+            f = function() {
+                return getp(url2).then( function(data) {
+                    var url3;
+                    console.log("HERE");
+                    console.log(data);
+                    window.$('.waiting').append('*');
+                    if (data.status === 'resolved') {
+                        console.log('DONE');
+                        window.$('.waiting').remove();
+                        url3 = data.data[0].output;
+                        console.log(url3);
+                        return getp(url3).then( function(data) {
+                            return ff(data);
+                        });
+                    } else {
+                        return setTimeout(function() {
+                          return f();
+                        }, 1000);
+                    }
+                });
+            };
+            return f();
+        });
+    }
 </script>
 
 <style>
@@ -4674,7 +4855,7 @@
         background-color: LightGreen;
     }
 
-    input {
+    input, textarea {
         border-width: 0px;
         border: none;
     }
@@ -4765,7 +4946,7 @@ the inner keys being smaller increments of movement, and the outer keys being
 larger increments.  In a browser window, the <b>focused element</b> is the element that receives keystrokes.
 For example, <i>for typed characters to appear in a text box, that text box must have
 focus</i>.  Since focusing the waveform itself would be problematic, the keyboard icon 
-<i class="fa fa-keyboard"/> in the upper right of the display is used as a proxy.  When the keyboard icon is focused, the icon will be green, and green will surround the waveform.  Most keyboard operations require this kind of focus.  Clicking on the waveform will return focus to the keyboard icon, as will clicking on the icon itself, since clicking on the waveform is sometimes undesirable because it removes the selection.
+<i class="fa fa-keyboard"></i> in the upper right of the display is used as a proxy.  When the keyboard icon is focused, the icon will be green, and green will surround the waveform.  Most keyboard operations require this kind of focus.  Clicking on the waveform will return focus to the keyboard icon, as will clicking on the icon itself, since clicking on the waveform is sometimes undesirable because it removes the selection.
         </p>
     </div>
     <div>
@@ -4889,6 +5070,9 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
             <li>
                 2. ASR
             </li>
+            <li>
+                3. ASR (Korean)
+            </li>
         </ol>
     </div>
 </dialog>
@@ -4931,8 +5115,10 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
     </div>
 </dialog>
 
+
+
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<dialog bind:this={dialog_upload_transcript} on:click={(e) => e.target.tagName == 'DIALOG' && dialog_upload_transcript.close()} on:keypress={() => null} class="sm:max-w-4xl p-1 rounded-lg shadow-xl">
+<dialog id="dialog_upload_transcript" bind:this={dialog_upload_transcript} on:click={(e) => e.target.tagName == 'DIALOG' && dialog_upload_transcript.close()} on:keypress={() => null} class="sm:max-w-4xl p-1 rounded-lg shadow-xl">
     <!-- <ModalHeader title="Upload Transcript" /> -->
     {#if autoloading}
         Loading Transcript
@@ -5076,6 +5262,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
     </div>
 </dialog>
 
+
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 <dialog bind:this={dialog_close_kit} on:click={(e) => e.target.tagName == 'DIALOG' && dialog_close_kit.close()} on:keypress={() => null} class="sm:max-w-4xl p-1 rounded-lg shadow-xl">
     <!-- <ModalHeader title="Close Transcript, Move to Next File" /> -->
@@ -5083,8 +5270,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
         <div>Close Transcript, Move to Next File</div>
         <div class="overflow-auto">
             <button class="{cbtn} w-full mb-2" on:click={dialog_close_kit_donef} use:event.dispatch={'drew_done'}>Done</button>
-            <textarea
-                class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
+            <Textarea
                 bind:value={done_comment}
                 placeholder="comment (optional)"
             />
@@ -5093,7 +5279,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
             <div class="m-2">
                 <div class="form-group">
                     <div class="form-group-header">
-                        <label>
+                        <label>                              
                             <input
                                 class="focus:ring-indigo-500 focus:border-indigo-500 h-4 w-4 border-gray-300"
                                 type=radio
@@ -5119,8 +5305,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 </div>
             </div>
             {#if dialog_close_kit_audit == 'broken' }
-                <textarea
-                class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
+                <Textarea
                 bind:value={broken_comment}
                 placeholder="comment (optional)"
                 />
@@ -5237,7 +5422,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
     </div>
     <div class="col-span-3">
         <div class="grid grid-cols-12">
-            {#if constraint_import_transcript_auto || permissions.project_manager}
+            {#if constraint_import_transcript || permissions.project_manager}
                 <div class="col-span-2">
                     <button class={btn} on:click={ () => show('upload_transcript') }>
                         <ArrowUpFromLine size=20 />
@@ -5252,11 +5437,49 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 </div>
             {/if}
             <div class="col-span-2 float-left" use:event.dispatch={'drew_submit'}>
-                <button class={btn} on:click={ () => show('close_kit') }>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                    </svg>
-                </button>
+                <Dialog.Root>
+                    <Dialog.Trigger class={buttonVariants({ variant: "secondary" })}>
+                        <CircleCheck size=20 />
+                    </Dialog.Trigger>
+                    <Dialog.Content>
+                        <Dialog.Header>
+                            <Dialog.Title>Close Transcript, Move to Next File</Dialog.Title>
+                            <Dialog.Description>
+                            This action cannot be undone. This will permanently delete your account
+                            and remove your data from our servers.
+                            </Dialog.Description>
+                        </Dialog.Header>
+                        <Button variant="secondary" on:click={dialog_close_kit_donef}>Done</Button>
+                        <Textarea
+                            bind:value={done_comment}
+                            placeholder="comment (optional)"
+                        />
+                        <hr class="mb-2">
+                        <div>Was there a problem with this file?</div>
+                        <RadioGroup.Root bind:value={dialog_close_kit_audit}>
+                            <div class="flex items-center space-x-2">
+                              <RadioGroup.Item value="skip" id="r1" />
+                              <Label for="r1">Skip</Label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                              <RadioGroup.Item value="broken" id="r2" />
+                              <Label for="r2">Broken</Label>
+                            </div>
+                        </RadioGroup.Root>
+                        {#if dialog_close_kit_audit == 'broken' }
+                            <Textarea
+                                bind:value={broken_comment}
+                                placeholder="comment (optional)"
+                            />
+                        {/if}
+                        {#if dialog_close_kit_audit == 'skip'}
+                            <div><button class="{dbtn} w-full" data-close-dialog on:click={skip}>Confirm Skip</button></div>
+                        {/if}
+                        {#if dialog_close_kit_audit == 'broken'}
+                            <div><button class="{dbtn} w-full" data-close-dialog on:click={dialog_close_kit_brokenf}>Confirm Broken</button></div>
+                        {/if}
+                    </Dialog.Content>
+                </Dialog.Root>
             </div>
             {#if show_asr}
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -5265,7 +5488,71 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                     <i class="fa fa-font"></i>
                 </div>
             {/if}
-            <div class="mode text-center col-span-3 float-left" use:event.dispatch={'drew_mode'}>{mode}</div>
+            <div class="mode text-center col-span-3 float-left" use:event.dispatch={'drew_mode'}>
+                <DropdownMenu.Root bind:open={mode_menu_open} closeFocus={".keyboard"} closeOnEscape={false}>
+                    <DropdownMenu.Trigger>{mode}</DropdownMenu.Trigger>
+                    <DropdownMenu.Content on:keydown={mode_keydown}>
+                      <DropdownMenu.Group>
+                          <DropdownMenu.Label>Command Mode</DropdownMenu.Label>
+                          <DropdownMenu.Separator />
+                          <DropdownMenu.RadioGroup bind:value={mode}>
+                            <DropdownMenu.RadioItem value="cursor">
+                                <div class="flex items-center">
+                                    Cursor
+                                </div>
+                                <div class="ml-auto flex items-center gap-px">
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        Esc
+                                    </kbd>
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        C
+                                    </kbd>
+                                </div>
+                            </DropdownMenu.RadioItem>
+                            <DropdownMenu.RadioItem value="window">
+                                <div class="flex items-center">
+                                    Window
+                                </div>
+                                <div class="ml-auto flex items-center gap-px">
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        Esc
+                                    </kbd>
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        W
+                                    </kbd>
+                                </div>
+                            </DropdownMenu.RadioItem>
+                            <DropdownMenu.RadioItem value="beg">
+                                <div class="flex items-center">
+                                    Begin
+                                </div>
+                                <div class="ml-auto flex items-center gap-px">
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        Esc
+                                    </kbd>
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        B
+                                    </kbd>
+                                </div>
+                            </DropdownMenu.RadioItem>
+                            <DropdownMenu.RadioItem value="end">
+                                <div class="flex items-center">
+                                    End
+                                </div>
+                                <div class="ml-auto flex items-center gap-px">
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        Esc
+                                    </kbd>
+                                    <kbd class="inline-flex size-5 items-center justify-center rounded-button border border-dark-10 bg-background-alt text-[10px] text-muted-foreground shadow-kbd">
+                                        E
+                                    </kbd>
+                                </div>
+                            </DropdownMenu.RadioItem>
+                          </DropdownMenu.RadioGroup>
+                      </DropdownMenu.Group>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Root>
+            </div>
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div class="col-span-2 float-left" on:mouseleave={mouseup} >
                 <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
@@ -5281,7 +5568,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
 <!-- <div bind:this={div} id="node-00" class="ChannelA Waveform active_channel" use:watchResize={resize}> -->
 <div bind:this={div} id="node-00" class="ChannelA Waveform active_channel relative" use:event.dispatch={'drew_waveform'} style="width: {width}px" >
     <div id={id} class="w-full node-waveform {active_channeln == 0 ? 'activech': ''}">
-        <canvas bind:this={canvas0} class="waveform-waveform {active_channeln == 0 ? 'active': ''}" use:canvas0_mount on:mousedown={mousedown0} />
+        <canvas bind:this={canvas0} class="waveform-waveform {active_channeln == 0 ? 'active': ''}" use:canvas0_mount on:mousedown={mousedown0}></canvas>
         {#if draw_underlines_flag}
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div class="underlines0 relative" style="height: {underlines0height}px" on:mousemove={mousemove_underlines} >
@@ -5292,14 +5579,14 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                         on:click={ () => underline(x) }
                         on:keypress={keyp}
                         use:event.dispatch={'drew_underline'}
-                    />
+                    ></div>
                 {/each}
             </div>
         {/if}
     </div>
     {#if two}
         <div id={id2} class="w-full node-waveform {active_channeln == 1 ? 'activech': ''}">
-            <canvas bind:this={canvas1} class="waveform-waveform {active_channeln == 1 ? 'active': ''}" use:canvas1_mount on:mousedown={mousedown1} />
+            <canvas bind:this={canvas1} class="waveform-waveform {active_channeln == 1 ? 'active': ''}" use:canvas1_mount on:mousedown={mousedown1}></canvas>
             {#if draw_underlines_flag}
                 <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div class="underlines1 relative" style="height: {underlines1height}px" on:mousemove={mousemove_underlines} >
@@ -5310,7 +5597,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                             on:click={ () => underline(x) }
                             on:keypress={keyp}
                             use:event.dispatch={'drew_underline'}
-                        />
+                        ></div>
                     {/each}
                 </div>
             {/if}
@@ -5326,37 +5613,37 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
         on:mouseup={mouseup}
         on:mouseleave={mouseup}
         on:click={()=>event.dispatch(null,'clicked_on_waveform')}
-    />
-    <div class="cursor bg-red-300 absolute w-px" style="left: {cursor_x}px; top: {active_top}px; height: {wave_canvas_height}px"/>
+    ></div>
+    <div class="cursor bg-red-300 absolute w-px" style="left: {cursor_x}px; top: {active_top}px; height: {wave_canvas_height}px"></div>
     <div class="cursor-time time-text text-red-300 absolute" style="left: {cursor_x+10}px; top: {active_top+5}px">{text}</div>
     <div
         class="selection bg-red-500/50 absolute {redact ? "redact-opacity" : ""}"
         style="left: {selection_beg_x}px; width: {selection_end_x-selection_beg_x}px; top: {active_top}px; height: {wave_canvas_height}px"
         bind:this={selection_rect}
-    />
+    ></div>
     <div class="selection-time-beg time-text absolute" style="left: {selection_end_x}px; top: {active_top+5}px">{selection_beg_text}</div>
     <div class="selection-time-end time-text absolute" style="left: {selection_beg_x}px; top: {active_top+5}px">{selection_end_text}</div>
     {#each visible_redactions as x}
         <div
             class="bg-red-500 absolute"
             style="left: {x.redacted_selection_x}px; width: {x.redacted_selection_width}px; top: 0px; height: {redacted_selection_height}px"
-        />
+        ></div>
         <div class="time-text absolute" style="left: {x.redacted_selection_x}px; top: 5px">{x.redacted_selection_beg_text}</div>
         <div class="time-text absolute" style="left: {x.redacted_selection_x+x.redacted_selection_width}px; top: 5px">{x.redacted_selection_end_text}</div>
         <div class="absolute text-center" style="left: {x.redacted_selection_x}px; width: {x.redacted_selection_width}px; top: {redacted_selection_height/2}px">REDACTED</div>
     {/each}
 
-    <div class="play-head bg-green-300 absolute" style="left: {playheadx}px; top: {active_top}px; height: {wave_canvas_height}px; width: 1px"/>
+    <div class="play-head bg-green-300 absolute" style="left: {playheadx}px; top: {active_top}px; height: {wave_canvas_height}px; width: 1px"></div>
     <div class="play-head-time time-text text-green-300 absolute" style="left: {playheadx+10}px; top: {active_top+5}px">{playheadtext}</div>
 
     <!-- svelte-ignore a11y-no-static-element-interactions -->
     <div class="w-full waveform-ticks relative"  style="height: 20px" on:mousemove={mousemove_ticks} use:event.dispatch={'drew_ticks'}>
         {#each ticks as x}
             {#if x.time_x}
-                <div class="bg-black absolute" style="left: {x.x}px; width: 1px; top: 0px; height: 10px" />
+                <div class="bg-black absolute" style="left: {x.x}px; width: 1px; top: 0px; height: 10px"></div>
                 <div class="time-text absolute" style="left: {x.time_x}px; top: {time_height+10}px">{x.text}</div>
             {:else}
-                <div class="bg-black absolute" style="left: {x.x}px; width: 1px; top: 5px; height: 5px" />
+                <div class="bg-black absolute" style="left: {x.x}px; width: 1px; top: 5px; height: 5px"></div>
             {/if}
         {/each}
     </div>
@@ -5371,7 +5658,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
             on:mouseleave={mouseup_scrollbar}
             use:event.dispatch={'drew_scrollbar'}
         >
-            <div class="bg-red-300 absolute h-full" style="left: {scrollbar_x}px; width: {scrollbar_width}px" />
+            <div class="bg-red-300 absolute h-full" style="left: {scrollbar_x}px; width: {scrollbar_width}px"></div>
         </div>
     {/if}
 
@@ -5461,10 +5748,10 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
 {/if}
 
 {#if experimental}
-    <div class="w-96 mx-auto">
+    <!-- <div class="w-96 mx-auto">
         <button id="xasrb2" class="{btn}" on:click={xasrr}>add ASR segments</button>
         <button id="xasrb" class="{btn}" on:click={xasr}>get ASR segments</button>
-    </div>
+    </div> -->
 {/if}
 
 
@@ -5487,19 +5774,24 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
         {/if}
     </div>
 
-
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<dialog bind:this={dialog} on:click={(e) => e.target.tagName == 'DIALOG' && dialog.close()} on:keypress={() => null}>
-    <div class="text-center">Select Text</div>
-    <div>use the mouse to double click or swipe</div>
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="m-9 p-9 border" on:mouseup={select_redaction}>{redact_from}</div>
-    <div><span class="mr-4">selection:</span><span class="border">{redact_text}</span></div>
-    <div class="flex mt-3">
-        <button class="{btn} mr-3" on:click={save_redactionf}>Save</button>
-        <button class="{btn} mr-3" on:click={() => dialog.close()}>Cancel</button>
-    </div>
-</dialog>
+<Dialog.Root bind:open={open_dialog_redact}>
+    <Dialog.Trigger />
+    <Dialog.Content>
+        <Dialog.Header>
+        <Dialog.Title>Select Text</Dialog.Title>
+        <Dialog.Description>
+            use the mouse to double click or swipe
+        </Dialog.Description>
+        </Dialog.Header>
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="m-9 p-9 border" on:mouseup={select_redaction}>{redact_from}</div>
+        <div><span class="mr-4">selection:</span><span class="border">{redact_text}</span></div>
+        <div class="flex mt-3">
+            <button class="{btn} mr-3" on:click={save_redactionf}>Save</button>
+            <button class="{btn} mr-3" on:click={() => open_dialog_redact = false}>Cancel</button>
+        </div>
+    </Dialog.Content>
+</Dialog.Root>
 
 <div id="segments" class="h-48 mt-6 pt-1 overflow-auto {rtl ? 'rtl' : ''} font-mono v-align-middle text-gray-700" use:event.dispatch={'drew_segments'}>
     {#each segs as x, i}
@@ -5513,7 +5805,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 flex justify-around
                 mx-auto
                 text-sm
-                {x.id === active ? 'text-red-500' : '' }
+                {x.id === active ? 'active-segment text-red-500' : '' }
                 {x.docid && x.docid.match(/.wav:A/) ? 'ch1' : ''}
                 {x.docid && x.docid.match(/.wav:B/) ? 'ch2' : ''}
             "
@@ -5547,7 +5839,9 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
             </div>
             <div class="col-span-6 text-sm">
                 {#if x.id === active}
-                    <input
+                    <textarea
+                        bind:this={ttextarea}
+                        rows={t_rows}
                         class="ann-segment pl-1 p-0 w-full text-sm focus:ring-2 focus:ring-red-500 flex-1 block rounded { t_value == "REDACTED" ? "bg-red-500" : ""}"
                         type="text"
                         bind:value={t_value}
@@ -5555,7 +5849,7 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                         on:blur={t_blur}
                         on:keydown={ (e) => t_keydown(e, x) }
                         use:t_init={x}
-                    >
+                    ></textarea>
                     {#if deleteb}
                         <div class="flex justify-end">
                             <button class="{dbtn}" on:click={delete_active_transcript_line}>delete</button>
@@ -5585,8 +5879,8 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 </div>
             </div>
         </div>
-        {#if x.error}
-            <div class="text-center bg-red-100"> {x.error} </div>
+        {#if x.error.size}
+            <div class="text-center bg-red-100"> {[...x.error.keys()].join(', ')} </div>
         {/if}
     {/each}
 </div>

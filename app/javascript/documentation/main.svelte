@@ -123,7 +123,7 @@
         </div>
     </details>
 
-    <table>
+    <!-- <table>
         <tr><th>action</th><th>roles</th></tr>
         <tr><td>change member status</td><td> owner </td></tr>
         <tr><td>edit</td><td>owner</td></tr>
@@ -131,7 +131,7 @@
         <tr><td>create tasks </td><td>admin</td></tr>
         <tr><td>show</td><td>member</td></tr>
         <tr><td>list</td><td>member, only joined projects</td></tr>
-    </table>
+    </table> -->
 
     To rephrase:  members of a project can see the project page and a list of the projects they are a member of; when a member is an admin, they can add or remove other users, and create tasks; the owner of the project can promote members to admin status, as well as edit attributes of the project.
     

@@ -1,4 +1,6 @@
 <script>
+    import { preventDefault } from 'svelte/legacy';
+
     import { btn } from './buttons'
     import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import PageTabs from './page_tabs.svelte';
@@ -6,14 +8,27 @@
     import Def from './input_text_def.svelte'
     import Table from '../lib/ldcjs/work/table.svelte';
     let help;
-    export let admin = false;
-    export let lead_annotator = false;
-    export let class_def_id;
-    export let name;
-    export let original_id;
-    export let def;
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [admin]
+     * @property {boolean} [lead_annotator]
+     * @property {any} class_def_id
+     * @property {any} name
+     * @property {any} original_id
+     * @property {any} def
+     */
 
-    let page = 2;
+    /** @type {Props} */
+    let {
+        admin = false,
+        lead_annotator = false,
+        class_def_id,
+        name = $bindable(),
+        original_id,
+        def
+    } = $props();
+
+    let page = $state(2);
     function pagef(e){ page = e.detail }
     let pages = [
         [ 'Namespace Info',  'lead_annotator', 'namespace attributes' ],
@@ -33,10 +48,10 @@
             tables.push(k);
         }
     } );
-    let columns = [];
-    let rows = [];
-    let defined = '';
-    let pp = Promise.resolve();
+    let columns = $state([]);
+    let rows = $state([]);
+    let defined = $state('');
+    let pp = $state(Promise.resolve());
     function fill(t, c){
         table = t;
         const cc = c ? '&count=true' : ''
@@ -50,11 +65,11 @@
             defined = x.defined;
         } );
     }
-    let count = 0;
-    let table = '';
-    let checkp = Promise.resolve();
-    let trees_ok = 0;
-    let trees_notok = 0;
+    let count = $state(0);
+    let table = $state('');
+    let checkp = $state(Promise.resolve());
+    let trees_ok = $state(0);
+    let trees_notok = $state(0);
     function check(t){
         checkp = getp(url + '?output=' + t + '&check=true').then( (x) => {
             trees_ok = x.ok;
@@ -72,7 +87,7 @@
     <div class="col-3 mx-auto">
         <div><span class="font-bold">ID:</span> {class_def_id}</div>
         <div>Original ID: {original_id}</div>
-        <form on:submit|preventDefault={()=>null}>
+        <form onsubmit={preventDefault(()=>null)}>
             {name}
             <InputText {url} label=Name key=name bind:value={name} />
         </form>
@@ -84,7 +99,7 @@
 {:else if page == 3}
     <div class="col-6 mx-auto">
         {#each tables as t}
-            <button class="{btn}" on:click={ () => fill(t, true) }>{t}</button>
+            <button class="{btn}" onclick={() => fill(t, true)}>{t}</button>
         {/each}
     </div>
     <hr>
@@ -92,13 +107,13 @@
         {#if count && table}
             <div>{count} rows in {table}</div>
             <div>trees should have these columns {defined}</div>
-            <div><button class="{btn}" on:click={ () => check(table) }>check {table}</button></div>
+            <div><button class="{btn}" onclick={() => check(table)}>check {table}</button></div>
             {#await checkp}
                 checking...
             {:then v}
                 <div>{trees_ok} trees ok, {trees_notok} trees not ok</div>
             {/await}
-            <div><button class="{btn}" on:click={ () => fill(table, false) }>load {table}</button></div>
+            <div><button class="{btn}" onclick={() => fill(table, false)}>load {table}</button></div>
         {/if}
     </div>
     <hr>

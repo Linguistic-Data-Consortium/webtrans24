@@ -68,5 +68,5 @@
             <!-- <div slot=body>{section_name}</div> -->
         </Modal>
     </div>
-    <Table bind:this={table} {columns} rows={secs} use_filter={true} key_column=list_item_id />
+    <Table bind:this={table} {columns} rows={secs} use_filter={true} key_column=list_item_id selectedf={() => null}/>
 </div>

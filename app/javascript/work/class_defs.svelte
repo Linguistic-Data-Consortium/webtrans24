@@ -1,16 +1,27 @@
 <script>
     import { btn } from "./buttons"
-    import { getp, postp, deletep } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { getp, postp, deletep } from '../lib/ldcjs/getp';
     import Table from '../lib/ldcjs/work/table.svelte';
-    import Flash from './flash.svelte'
     import Spinner from './spinner.svelte'
-    export let help = false;
-    export let admin = false;
-    export let lead_annotator = false;
-    export let portal_manager = false;
+    import { toast } from "svelte-sonner";
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [help]
+     * @property {boolean} [admin]
+     * @property {boolean} [lead_annotator]
+     * @property {boolean} [portal_manager]
+     */
+
+    /** @type {Props} */
+    let {
+        help = false,
+        admin = false,
+        lead_annotator = false,
+        portal_manager = false
+    } = $props();
     const unused = help && portal_manager;
     let name;
-    let p;
+    let p = $state();
     function get(){ p = getp('/class_defs') }
     get();
     let columns = [
@@ -30,21 +41,23 @@
         title: 'Delete Namespace',
         h: ''
     };
-    let flash_type = null;
-    let flash_value;
     function response(data){
-        if(data.error){
-            flash_type = 'error';
+        let flash_value;
+        if(!data){
+            toast.error('bad response');
+        }
+        else if(data.error){
             flash_value = data.error.join(' ');
+            toast.error(flash_value);
         }
         else{
-            flash_type = 'success';
             if(data.deleted){
                 flash_value = data.deleted;
             }
             else{
                 flash_value = "created " + data.class_def.name;
             }
+            toast.success(flash_value);
             get();
         }
     }
@@ -59,9 +72,9 @@
             `/class_defs/${class_def_id}`
         ).then(response);
     }
-    let class_def_id;
-    let class_def_index;
-    let pp;
+    let class_def_id = $state();
+    let class_def_index = $state();
+    let pp = $state();
     function open(){
         pp = getp(`/class_defs/${class_def_id}`)
     }
@@ -87,7 +100,7 @@
 {:then v}
     {#if pp}
         <div class="float-right">
-            <button class="{btn}" on:click={back}>Return to namespace list</button>
+            <button class="{btn}" onclick={back}>Return to namespace list</button>
         </div>
         {#await pp}
             <div class="mx-auto w-8 h-8"><Spinner /></div>
@@ -96,12 +109,11 @@
             <!-- <ClassDef {admin} {lead_annotator} {class_def_id} {...v} /> -->
         {/await}
     {:else}
-        <Flash {flash_type} {flash_value} />
         <div class="flex justify-around">
             <div>All Namespaces</div>
             {#if class_def_id}
                 <div>
-                    <button class="{btn}" on:click={open}>Open</button>
+                    <button class="{btn}" onclick={open}>Open</button>
                 </div>
                 {#if admin}
                     <!-- <Modal {...deletem}>
@@ -133,6 +145,6 @@
                 </Modal> -->
             {/if}
         </div>
-        <Table bind:selected={class_def_id} bind:index={class_def_index} {columns} rows={v} use_filter={true} key_column=id height=400 />
+        <Table bind:selected={class_def_id} indexf={x => class_def_index = x} {columns} rows={v} use_filter={true} key_column=id height=400 />
     {/if}
 {/await}

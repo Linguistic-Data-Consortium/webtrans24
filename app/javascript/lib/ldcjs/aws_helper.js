@@ -1,4 +1,4 @@
-"use strict";
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 
 // generic aws helper
 
@@ -78,6 +78,21 @@ function s3url(url){
   return o;
 }
 
+function S3url(url){
+  const o = s3url(url);
+  return { Bucket: o.bucket, Key: o.key };
+}
+
+function get_json_object(Bucket, Key, gets3){
+  let p;
+  if(gets3) p = gets3().then((s3) => s3.send(new GetObjectCommand({ Bucket, Key })));
+  else      p = getObject(Bucket, Key);
+  return p
+  .then((x) => x.Body)
+  .then((x) => x.transformToString())
+  .then(JSON.parse)
+}
+
 export {
   getSignedUrlPromise,
   getTranscribeClient,
@@ -87,5 +102,7 @@ export {
   putObject,
   getObject,
   refreshToken,
-  s3url
+  s3url,
+  S3url,
+  get_json_object
 }

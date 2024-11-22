@@ -1,18 +1,30 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { tick } from 'svelte';
-    import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
-    export let label;
-    export let key;
-    export let value;
-    export let url;
-    export let meta;
-    export let disabled = false;
+    import { flash } from './helpers';
+    /**
+     * @typedef {Object} Props
+     * @property {any} label
+     * @property {any} key
+     * @property {any} value
+     * @property {any} urlf
+     * @property {any} meta
+     * @property {boolean} [disabled]
+     */
+
+    /** @type {Props} */
+    let {
+        label,
+        key,
+        value = $bindable(),
+        urlf,
+        meta,
+        disabled = false
+    } = $props();
     const id = Math.random().toString(36).substring(2);
-    let flash_type;
-    let flash_value;
-    let flash_css;
     function patch(k, v){
-        if(!url){
+        if(!urlf){
             return;
         }
         let x = {};
@@ -27,21 +39,8 @@
         else{
             x[k] = k;
         }
-        patchp( url, x ).then(
-            function(data){
-                if(data.error){
-                    flash_type = 'error';
-                    flash_value = data.error.join(' ');
-                    flash_css = "bg-red-100 border-red-400 text-red-700 px-4 py-3 rounded-full";
-                }
-                else{
-                    flash_type = 'success';
-                    flash_css = "bg-green-100 border-green-400 text-green-700 px-4 py-3 rounded-full";
-                    console.log(data)
-                    flash_value = "updated " + k + " to " + (data[k] || (data.meta && data.meta[k]) || (data.constraints && data.constraints[k]));
-                    setTimeout( () => flash_type = null, 2000);
-                }
-            }
+        urlf(x).then(
+            x => flash(x, k)
         );
     }
     let first = true;
@@ -51,7 +50,9 @@
         }
         patch( key, value );
     }
-    $: update(value);
+    run(() => {
+        update(value);
+    });
     tick().then( () => first = false );
 </script>
 
@@ -59,7 +60,7 @@
 input { display: inline-block; }
 </style>
 
-<div class="{flash_type ? flash_type + "ed" : ''}">
+<div>
     <div>
         <label for="input-{id}">
             <input
@@ -72,16 +73,5 @@ input { display: inline-block; }
             />
             {label}
         </label>
-        {#if flash_type}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-            <p
-                id="input-{id}-validation"
-                class="{flash_css}"
-                on:click={ () => flash_type = null }
-            >
-                {flash_value}
-            </p>
-        {/if}
     </div>
 </div>

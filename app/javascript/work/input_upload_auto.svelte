@@ -76,5 +76,5 @@
 {message}
 
 <div class="hidden">
-    <Upload on:sourcefile={sourcefile} />
+    <Upload {sourcefile} />
 </div>

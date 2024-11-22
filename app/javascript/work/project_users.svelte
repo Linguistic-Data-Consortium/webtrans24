@@ -1,18 +1,30 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
+    import { run } from 'svelte/legacy';
+
     import { postp, deletep } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Modal from '../modal.svelte'
     import ProjectUser from './project_user.svelte'
     import SelectUsers from './select_users.svelte'
     import { btn, dbtn } from './buttons'
-    export let project_id;
-    export let project_owner = false;
-    export let project_admin = false;
-    export let project_users;
-    let project_users_refresh = 0;
-    let project_user_table;
+    import { toast } from "svelte-sonner";
+    /**
+     * @typedef {Object} Props
+     * @property {any} project_id
+     * @property {boolean} [project_owner]
+     * @property {boolean} [project_admin]
+     * @property {any} project_users
+     */
+
+    /** @type {Props} */
+    let {
+        project_id,
+        project_owner = false,
+        project_admin = false,
+        project_users = $bindable()
+    } = $props();
+    let project_users_refresh = $state(0);
+    let project_user_table = $state();
     let columns = [
         [ 'User ID', 'user_id', 'col-1' ],
         [ 'Name', 'name', 'col-2' ],
@@ -38,15 +50,16 @@
         project_user_table.reset_rows(project_users);
         project_users_refresh += 1;
     }
-    let flash_type = null;
-    let flash_value;
     function response(data){
-        if(data.error){
-            flash_type = 'error';
+        let flash_value;
+        if(!data){
+            toast.error('bad response');
+        }
+        else if(data.error){
             flash_value = data.error.join(' ');
+            toast.error(flash_value);
         }
         else{
-            flash_type = 'success';
             if(data.deleted){
                 flash_value = data.deleted;
             }
@@ -57,6 +70,7 @@
                     refresh();
                 }
             }
+            toast.success(flash_value);
             // setTimeout( () => dispatch('reload', '') , 1000 );
         }
     }
@@ -72,8 +86,8 @@
             `/project_users/${project_user_id}`
         ).then(response);
     }
-    let project_user_id;
-    let project_user_index;
+    let project_user_id = $state();
+    let project_user_index = $state();
     let name;
     let user_id;
     let pp;
@@ -87,41 +101,35 @@
         user_id = x.id;
         create();
     }
-    let is_owner;
-    let is_admin;
-    $: {
+    let is_owner = $state();
+    let is_admin = $state();
+    run(() => {
         if(project_user_id){
             is_owner = project_user_index[project_user_id].owner;
             is_admin = project_user_index[project_user_id].admin;
         }
-    }
+    });
 </script>
 
 <style>
 </style>
 
 
-{#if flash_type}
-    <div class="text-center flash flash-{flash_type} mb-3">
-        {flash_value}
-        <button type=button class="close flash-close js-flash-close">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-        </button>
-    </div>
-{/if}
 <div class="flex justify-around items-center my-3">
     <div class="font-semibold">Members</div>
     {#if project_user_id}
         {#if project_admin}
             <Modal {...deletem}>
-                <div slot=summary>
+                {#snippet summary()}
+                <div >
                     Remove User
                 </div>
-                <div slot=body>
+                {/snippet}
+                {#snippet body()}
+                <div >
                     This will remove {project_user_index[project_user_id].name}, are you sure you want to do this?
                 </div>
+                {/snippet}
             </Modal>
         {/if}
     {/if}
@@ -135,12 +143,13 @@
             <Table
                 bind:this={project_user_table}
                 bind:selected={project_user_id}
-                bind:index={project_user_index}
+                indexf={x => project_user_index = x}
                 {columns}
                 rows={project_users}
                 use_filter={true}
                 key_column=id
                 height=400
+                selectedf={() => null}
             />
         {/key}
     </div>
@@ -148,7 +157,7 @@
         {#if project_user_id && project_owner}
             {#each project_users as x}
                 {#if x.id == project_user_id}
-                    <ProjectUser id={x.id} is_owner={x.owner} is_admin={x.admin} on:refresh={refresh} />
+                    <ProjectUser id={x.id} is_owner={x.owner} is_admin={x.admin} {refresh} />
                 {/if}
             {/each}
         {/if}

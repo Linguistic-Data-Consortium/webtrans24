@@ -28,8 +28,10 @@
             <Spinner />
             {m2}
         {:then v}
-            <div> adding {v.ch1.length} segments from channel 1</div>
-            {#if v.ch2 && v.ch2.length}
+            {#if v && v.ch1 && v.ch1.length}
+                <div> adding {v.ch1.length} segments from channel 1</div>
+            {/if}
+            {#if v && v.ch2 && v.ch2.length}
                 <div> adding {v.ch2.length} segments from channel 2</div>
             {/if}
         {:catch e}

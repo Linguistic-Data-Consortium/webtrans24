@@ -1,19 +1,34 @@
 <script>
+    import { preventDefault } from 'svelte/legacy';
+
     import PageTabs from './page_tabs.svelte'
     import Members from './group_users.svelte'
     import InputText from './input_text.svelte'
-    // export let help;
-    export let admin = false;
-    // export let lead_annotator = false;
+    
+    
 
-    export let id;
-    export let name;
-    export let group_users;
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [admin] - export let help;
+     * @property {any} id - export let lead_annotator = false;
+     * @property {any} name
+     * @property {any} group_users
+     * @property {any} reload
+     */
+
+    /** @type {Props} */
+    let {
+        admin = false,
+        id,
+        name,
+        group_users,
+        reload
+    } = $props();
 
 
     let url = `/groups/${id}`;
 
-    let page = 2;
+    let page = $state(2);
     function pagef(e){ page = e.detail }
     let pages = [
         [ 'Group Info', 'all', 'task attributes' ],
@@ -29,7 +44,7 @@
 {#if page == 1}
     <div class="col-3 mx-auto">
         <div>ID: {id}</div>
-        <form on:submit|preventDefault={()=>null}>
+        <form onsubmit={preventDefault(()=>null)}>
             <InputText {url} label=Name key=name value={name} />
         </form>
     </div>
@@ -37,6 +52,6 @@
     <Members
         group_id={id}
         {group_users}
-        on:reload
+        {reload}
     />
 {/if}

@@ -5,48 +5,55 @@
     import Table from '../lib/ldcjs/work/table.svelte';
     import Bucket from './bucket.svelte'
     import PromiseBucket from './promise_bucket.svelte'
-    export let help;
-    export let admin = false;
-    export let lead_annotator = false;
-    export let portal_manager = false;
-    export let project_manager = false;
-    export let p_for_bucket;
+    import { selectedff } from './helpers';
+    /**
+     * @typedef {Object} Props
+     * @property {any} help
+     * @property {boolean} [admin]
+     * @property {boolean} [lead_annotator]
+     * @property {boolean} [portal_manager]
+     * @property {boolean} [project_manager]
+     * @property {any} p_for_bucket
+     */
+
+    /** @type {Props} */
+    let {
+        help,
+        admin = false,
+        lead_annotator = false,
+        portal_manager = false,
+        project_manager = false,
+        p_for_bucket
+    } = $props();
     let unused = portal_manager && project_manager;
     let category;
     let name;
-    let p;
+    let p = $state();
     function get(){ p = getp('/bucket') }
     get();
     let columns = [
         [ 'Bucket', 'name', 'col-1' ]
     ];
-    let flash_type = null;
-    let flash_value;
-    let bucket_name;
-    let bucket_index;
+    let bucket_name = $state();
+    let bucket_index = $state();
     p.then( (o) => {
 			console.log("does this still need to happen?");
 			console.log(o);
     });
-    let bucket;
-    let style;
-    let timeout;
-    function selected(e){
-        style = `position: absolute; left: ${e.detail.pageX-20}px; top: ${e.detail.pageY+20}px; z-index: 10`;
-        if(timeout){
-            clearTimeout(timeout);
-        }
-        timeout = setTimeout( () => style = null, 2000);
-    }
+    let bucket = $state();
+    let style = $state();
+    let selectedf = selectedff(x => style = x);
 </script>
 
 <style>
 </style>
 
 <Help {help}>
-    <div slot=content>
+    {#snippet content()}
+    <div>
         <p>features</p>
     </div>
+    {/snippet}
 </Help>
 
 {#await p}
@@ -55,7 +62,7 @@
     {#if bucket}
         <div class="flexx justifxy-around">
             <div class="float-right">
-                <button class="{btn}" on:click={()=>bucket=null}>Return to Bucket list</button>
+                <button class="{btn}" onclick={()=>bucket=null}>Return to Bucket list</button>
             </div>
         </div>
         {#if bucket == 'proimse-uploads'}
@@ -67,18 +74,18 @@
         <div class="w-1/2 mx-auto">
             <div class="flex justify-around">
                 <div>
-                    <button class="{btn}" on:click={()=>bucket=bucket_name}>Open</button>
+                    <button class="{btn}" onclick={()=>bucket=bucket_name}>Open</button>
                 </div>
                 <div>
-                    <button class="{btn}" on:click={()=>bucket='promise-uploads'}>Open Promises</button>
+                    <button class="{btn}" onclick={()=>bucket='promise-uploads'}>Open Promises</button>
                 </div>
             </div>
             {#if style}
                 <div {style}>
-                    <div class="p-1"><button class="{btn}" on:click={()=>bucket=bucket_name}>Open</button></div>
+                    <div class="p-1"><button class="{btn}" onclick={()=>bucket=bucket_name}>Open</button></div>
                 </div>
             {/if}
-            <Table bind:selected={bucket_name} bind:index={bucket_index} {columns} rows={v.buckets} use_filter={true} key_column=name height=96 on:selected={selected} />
+            <Table bind:selected={bucket_name} indexf={x => bucket_index = x} {columns} rows={v.buckets} use_filter={true} key_column=name height=96 {selectedf} />
         </div>
     {/if}
 {/await}

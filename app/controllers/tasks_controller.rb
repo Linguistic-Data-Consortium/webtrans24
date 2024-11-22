@@ -43,7 +43,7 @@ class TasksController < ApplicationController
             @title = @task.name
             @states = @task.workflow ? @task.workflow_user_states.split(',') : []
             @kit_state_count_map = Hash.new
-            @kit_states = ['assigned', 'unassigned', 'broken', 'hold', 'excluded', 'done', 'unassigned'] #UserDefinedObject.where(name: "kit_states").first.object.split(" ")
+            @kit_states = ['assigned', 'unassigned', 'broken', 'hold', 'excluded', 'done', 'unassigned', 'priority'] #UserDefinedObject.where(name: "kit_states").first.object.split(" ")
 
             @bucket = @task&.data_set&.name&.split&.first || ''
             @bucket_size = @bucket == '' ? 0 : helpers.bucket_size(@bucket)
@@ -88,7 +88,7 @@ class TasksController < ApplicationController
               # project_owner_bool: @project_owner_bool,
               task_admin_bool: task_admin?,
               # tasks: @project.tasks.map { |x| { id: x.id, name: x.name } },
-              task_users: task_users,
+              members: task_users,
               class_def: (class_def ? true : false),
               tables: (class_def ? class_def.views_created : nil),
               source_uid: @task.meta['docid'],
@@ -99,12 +99,13 @@ class TasksController < ApplicationController
               bucket_size: @bucket_size
             }
             if params[:existing] == 'true'
-              Kit.includes(:user, :task).where(task_id: @task.id, user_id: current_user.id).map do |x|
+              # Kit.includes(:user, :task).where(task_id: @task.id, user_id: current_user.id).map do |x|
+              Kit.includes(:user, :task).where(task_id: @task.id).map do |x|
                 {
                   id: x.id,
                   uid: x.uid,
                   filename: x.source[:filename],
-                  kit_user: x.user.name,
+                  kit_user: x.user&.name,
                   task_id: x.task_id,
                   task: x.task.name,
                   state: x.state,

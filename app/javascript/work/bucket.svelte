@@ -106,7 +106,7 @@
 </div>
 <hr>
 {#if contents}
-    <Table bind:selected={object_id} bind:index={object_index} {columns} rows={contents} use_filter={true} key_column=Key height="96" />
+    <Table bind:selected={object_id} indexf={x => object_index = x} {columns} rows={contents} use_filter={true} key_column=Key height="96" />
 {:else}
     <div class="mx-auto w-8 h-8"><Spinner /></div>
 {/if}

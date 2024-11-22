@@ -1,17 +1,25 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { tick } from 'svelte';
     import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Flash from './flash.svelte'
     // export let admin = false;
-    // export let lead_annotator = false;
-    export let class_def_id;
+    
 
-    export let id;
-    export let name;
+    /**
+     * @typedef {Object} Props
+     * @property {any} class_def_id - export let lead_annotator = false;
+     * @property {any} id
+     * @property {any} name
+     */
+
+    /** @type {Props} */
+    let { class_def_id, id, name = $bindable() } = $props();
 
     let p;
-    let flash_type = null;
-    let flash_value;
+    let flash_type = $state(null);
+    let flash_value = $state();
     let timeout;
     let first = true;
     function update(x){
@@ -40,7 +48,9 @@
             );
         }, 1000);
     }
-    $: update(name);
+    run(() => {
+        update(name);
+    });
     tick().then( () => first = false );
 </script>
 

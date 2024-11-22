@@ -1,5 +1,7 @@
 <script>
-    import PageTabs from './page_tabs.svelte';
+    import { preventDefault } from 'svelte/legacy';
+
+    import * as Tabs from "$lib/components/ui/tabs";
     import Members from './task_users.svelte';
     import Kits from './kits.svelte';
     import KitBatches from './kit_batches.svelte';
@@ -9,36 +11,73 @@
     import InputSelect from './input_select.svelte';
     import InputCheckbox from './input_checkbox.svelte';
     import Nodes from './xodes.svelte';
-    export let help;
-    export let project_admin = false;
     export const lead_annotator = false;
-    export let project_id;
-    export let task_id;
-    export let project_users;
-    export let info = null;
 
-    export let id;
-    export let name;
-    export let status;
-    export let workflow_id;
-    export let workflows;
-    export let kit_type_id;
-    export let kit_types;
-    export let data_set_id;
-    export let data_sets;
-    export let task_admin_bool;
-    export let task_users;
-    export let class_def;
-    export let tables;
-    export let ann;
-    export let ann2;
-    export let diff;
-    export let source_uid;
-    export let meta;
-    export let features;
-    export let tasks;
-    export let bucket;
-    export let bucket_size;
+    /**
+     * @typedef {Object} Props
+     * @property {any} help
+     * @property {boolean} [project_admin]
+     * @property {any} project_id
+     * @property {any} task_id
+     * @property {any} project_users
+     * @property {any} [info]
+     * @property {any} id
+     * @property {any} name
+     * @property {any} status
+     * @property {any} workflow_id
+     * @property {any} workflows
+     * @property {any} kit_type_id
+     * @property {any} kit_types
+     * @property {any} data_set_id
+     * @property {any} data_sets
+     * @property {any} task_admin_bool
+     * @property {any} task_users
+     * @property {any} class_def
+     * @property {any} tables
+     * @property {any} ann
+     * @property {any} ann2
+     * @property {any} diff
+     * @property {any} source_uid
+     * @property {any} meta
+     * @property {any} features
+     * @property {any} tasks
+     * @property {any} bucket
+     * @property {any} bucket_size
+     * @property {any} reload
+     */
+
+    /** @type {Props} */
+    let {
+        help,
+        project_admin = false,
+        project_id,
+        task_id,
+        project_users,
+        info = null,
+        id,
+        name = $bindable(),
+        status,
+        workflow_id,
+        workflows,
+        kit_type_id,
+        kit_types,
+        data_set_id,
+        data_sets = $bindable(),
+        task_admin_bool,
+        task_users,
+        class_def,
+        tables,
+        ann,
+        ann2,
+        diff,
+        source_uid,
+        meta,
+        features,
+        tasks,
+        bucket,
+        bucket_size,
+        reload
+    } = $props();
     let unused = source_uid && class_def && tables && ann && ann2 && diff;
 
     let page = 2;
@@ -53,6 +92,7 @@
         [ 'Task Members', 'admin', 'members of this task' ],
         [ 'Batches', 'admin', 'kit batches' ],
         [ 'Nodes', 'admin', 'nodes' ]
+        [ 'New Batches', 'admin', 'nb' ]
     ];
     let url = `/projects/${project_id}/tasks/${task_id}`;
     let columns = [
@@ -61,7 +101,7 @@
         [ 'Admin', 'admin', 'col-1' ]
     ]
     let statuses = [ 'active', 'inactive' ];
-    let workflow;
+    let workflow = $state();
     let workflows_menu = [];
     for(let x of workflows){
         if(
@@ -80,14 +120,14 @@
             // break;
         }
     }
-    let kit_type;
+    let kit_type = $state();
     for(let x of kit_types){
         if(x.id == kit_type_id){
             kit_type = x;
             break;
         }
     }
-    let data_set;
+    let data_set = $state();
     data_sets = [ { id: null, name: 'none'} ].concat(data_sets);
     for(let x of data_sets){
         if(x.id == data_set_id){
@@ -95,7 +135,7 @@
             break;
         }
     }
-    let menu_task;
+    let menu_task = $state();
     let menu_tasks = [ { id: 0, name: 'none'} ].concat(tasks);
     if(meta['1p_task_id']){
         for(let x of tasks){
@@ -108,7 +148,7 @@
     else{
         menu_task = menu_tasks[0];
     }
-    let constraintb = {};
+    let constraintb = $state({});
     for(let x of features){
         if(x.name == x.value){
             constraintb[x.name] = meta[x.name] == x.name;
@@ -117,18 +157,34 @@
             constraintb[x.name] = meta[x.name];
         }
     }
+    let tab = $state('info');
+    function tabs(x){
+        tab = x;
+    }
 </script>
 
 <style>
 </style>
 
-<PageTabs {help} {pages} {page} on:page={pagef} admin={task_admin_bool} />
 
-{#if page == 1}
+<!-- <PageTabs {help} {pages} {page} on:page={pagef} admin={task_admin_bool} /> -->
+
+<Tabs.Root value="info" class="w-full justify-center" onValueChange={tabs}>
+    <Tabs.List>
+        <Tabs.Trigger value="info">Task Info</Tabs.Trigger>
+        <Tabs.Trigger value="kits">Kits</Tabs.Trigger>
+        <Tabs.Trigger value="duals">Duals</Tabs.Trigger>
+        <Tabs.Trigger value="members">Task Members</Tabs.Trigger>
+        <Tabs.Trigger value="batches">Batches</Tabs.Trigger>
+        <Tabs.Trigger value="nodes">Nodes</Tabs.Trigger>
+        <Tabs.Trigger value="nb">New Batches</Tabs.Trigger>
+    </Tabs.List>
+    <Tabs.Content value="info">
+        {#if tab == 'info'}
     {#if project_admin}
         <div class="w-96 mx-auto">
             <div>ID: {id}</div>
-            <form on:submit|preventDefault={()=>null}>
+            <form onsubmit={preventDefault(()=>null)}>
                 <InputText   {url} label=Name key=name bind:value={name} />
                 <InputSelect {url} label=Status key=status value={status} values={statuses} />
                 <InputSelect {url} label=Workflow key="workflow_id" value={workflow} values={workflows_menu} att=name />
@@ -160,7 +216,10 @@
             <div>Name: {name}</div>
         </div>
     {/if}
-{:else if page == 2}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="kits">
+        {#if tab == 'kits'}
     <Kits
         {help}
         {project_id}
@@ -168,7 +227,10 @@
         task_admin={task_admin_bool}
         {task_users}
     />
-{:else if page == 3}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="duals">
+        {#if tab == 'duals'}
     <Duals
         {help}
         {project_id}
@@ -177,16 +239,22 @@
         {task_users}
         {meta}
     />
-{:else if page == 4}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="members">
+        {#if tab == 'members'}
     <Members
         {project_id}
         {task_id}
         task_admin={task_admin_bool}
         {task_users}
         {project_users}
-        on:reload
+        {reload}
     />
-{:else if page == 5}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="batches">
+        {#if tab == 'batches'}
     {#if project_admin || lead_annotator || task_admin_bool}
         <KitBatches
             {help}
@@ -195,15 +263,25 @@
             task_admin={task_admin_bool}
             {task_users}
         />
+    {:else}
+        Permission Denied
     {/if}
-{:else if page == 6}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="nodes">
+        {#if tab == 'nodes'}
     {#if project_admin || lead_annotator || task_admin_bool}
         <Nodes
             {project_id}
             {task_id}
         />
+    {:else}
+        Permission Denied
     {/if}
-{:else if page == 7}
+        {/if}
+    </Tabs.Content>
+    <Tabs.Content value="nb">
+        {#if tab == 'nb'}
     {#if project_admin || lead_annotator || task_admin_bool}
         <NewBatches
             {help}
@@ -211,5 +289,9 @@
             task_admin={task_admin_bool}
             {task_users}
         />
+    {:else}
+        Permission Denied
     {/if}
-{/if}
+        {/if}
+    </Tabs.Content>
+</Tabs.Root>

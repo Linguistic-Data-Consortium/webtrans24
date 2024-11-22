@@ -1,7 +1,5 @@
 <script>
     import { btn } from "./buttons"
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import ModalHeader from './modall_box_header.svelte'
     export let name;
     export let columns;
@@ -82,7 +80,7 @@
     export let selected = null;
     function click_select(e){
         selected = this.dataset.key;
-        dispatch('selected', e);
+        selectedf(e);
     }
     let text_red;
     export function set_text_red(x){

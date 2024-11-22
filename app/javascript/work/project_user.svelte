@@ -1,16 +1,17 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { tick } from 'svelte';
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
-    import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
-    import Flash from './flash.svelte';
+    import { patchp } from '../lib/ldcjs/getp';
+    import { toast } from "svelte-sonner";
     import Spinner from './spinner.svelte';
-    export let id;
-    export let is_owner;
-    export let is_admin;
+    let {
+        id,
+        is_owner = $bindable(),
+        is_admin = $bindable(),
+        refresh
+    } = $props();
     let p;
-    let flash_type;
-    let flash_value;
     let timeout;
     let first = true;
     function update(x){
@@ -23,30 +24,38 @@
             x
         ).then(
             function(data){
-                if(data.error){
-                    flash_type = 'error';
+                let flash_value;
+                if(!data){
+                    toast.error('bad response');
+                }
+                else if(data.error){
                     flash_value = data.error.join(' ');
-                    dispatch('refresh');
+                    toast.error(flash_value);
+                    refresh();
                 }
                 else{
-                    flash_type = 'success';
                     flash_value = data.ok;
-                    if(data.updated.hasOwnProperty('owner')) is_owner = data.updated.owner;
-                    if(data.updated.hasOwnProperty('admin')) is_admin = data.updated.admin;
-                    if(data.updated) dispatch('refresh', { id, ...data.updated });
+                    toast.success(flash_value);
+                    refresh();
+                    // if(data.updated.hasOwnProperty('owner')) is_owner = data.updated.owner;
+                    // if(data.updated.hasOwnProperty('admin')) is_admin = data.updated.admin;
+                    // if(data.updated) refresh({ id, ...data.updated });
                 }
             }
         );
     }
-    $: update({ owner: is_owner });
-    $: update({ admin: is_admin });
+    run(() => {
+        update({ owner: is_owner });
+    });
+    run(() => {
+        update({ admin: is_admin });
+    });
     tick().then( () => first = false );
 </script>
 
 <style>
 </style>
 
-<Flash {flash_type} {flash_value} />
 {#if p}
     {#await p}
         <div class="mx-auto w-8 h-8"><Spinner /></div>

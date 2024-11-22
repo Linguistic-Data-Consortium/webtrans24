@@ -2,7 +2,7 @@
     import { postp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/getp.js'
     import { StartTranscriptionJobCommand, GetTranscriptionJobCommand } from "@aws-sdk/client-transcribe";
     import { getTranscribeClient } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.10/src/aws_helper.js'
-    export let url;
+    let { url } = $props();
     const run = async (params) => {
       try {
         const data = await getTranscribeClient().send(new StartTranscriptionJobCommand(params));
@@ -12,7 +12,7 @@
         console.log(JSON.stringify(err))
       }
     };
-    let tp;
+    let tp = $state();
     const run2 = async (params) => {
       try {
         const data = await getTranscribeClient().send(new GetTranscriptionJobCommand(params));

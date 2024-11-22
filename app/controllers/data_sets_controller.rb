@@ -1,6 +1,11 @@
 class DataSetsController < ApplicationController
 
   before_action :authenticate
+  before_action :set_model
+
+  def set_model
+    @model = DataSet
+  end
 
   def bucket
     s3 = Aws::S3::Client.new region: 'us-east-1'
@@ -11,7 +16,7 @@ class DataSetsController < ApplicationController
   end
   
   def index
-    index_all model: DataSet, only: :project_manager
+    index_allm only: :project_manager
   end
 
   def show
@@ -52,7 +57,7 @@ class DataSetsController < ApplicationController
   end
 
   def create
-    createj model: DataSet, params: data_set_params, only: :project_manager
+    createjm params: data_set_params, only: :project_manager
   end
 
   def createx
@@ -88,11 +93,11 @@ class DataSetsController < ApplicationController
   end
 
   def update
-    updatej model: DataSet, p: params, params: data_set_params, only: :project_manager
+    updatejm p: params, params: data_set_params, only: :project_manager
   end
 
   def destroy
-    destroyj model: DataSet, params: params, only: :project_manager
+    destroyjm params: params, only: :project_manager
   end
 
   def respond_with_dataset

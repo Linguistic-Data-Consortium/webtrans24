@@ -3,8 +3,8 @@
     import ServicesSadTest from './services_sad_test.svelte';
     import ServicesTranscribeTest from './services_transcribe_test.svelte';
     let url = 'demo/CarrieFisher10s.wav';
-    let b1 = false;
-    let b2 = false;
+    let b1 = $state(false);
+    let b2 = $state(false);
 </script>
 
 <style>
@@ -13,10 +13,10 @@
 {#if b1}
     <ServicesSadTest {url} />
 {:else}
-    <div><button class="{btn}" on:click={ () => b1 = true }>SAD Test</button></div>
+    <div><button class="{btn}" onclick={() => b1 = true}>SAD Test</button></div>
 {/if}
 {#if b2}
     <ServicesTranscribeTest url={'https://coghealth.s3.amazonaws.com/' + url} />
 {:else}
-    <div><button class="{btn}" on:click={ () => b2 = true }>Transcribe Test</button></div>
+    <div><button class="{btn}" onclick={() => b2 = true}>Transcribe Test</button></div>
 {/if}

@@ -1,13 +1,22 @@
 <script>
+    import { preventDefault } from 'svelte/legacy';
+
     import { cbtn } from "./buttons"
     import { getp, postp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Table from '../lib/ldcjs/work/table.svelte';
     import Modal from '../modal.svelte';
     import Spinner from './spinner.svelte'
-    export let admin = false;
-    export let portal_manager = false;
-    export let project_manager = false;
-    let p;
+    import { toast } from "svelte-sonner";
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [admin]
+     * @property {boolean} [portal_manager]
+     * @property {boolean} [project_manager]
+     */
+
+    /** @type {Props} */
+    let { admin = false, portal_manager = false, project_manager = false } = $props();
+    let p = $state();
     function get(){
         p = getp('/invites')
     }
@@ -29,12 +38,10 @@
             [ 'Send', cbtn, create_invite ]
         ]
     };
-    let email;
-    let flash_type = null;
-    let flash_value;
-    let role;
-    let project_id;
-    let task_id;
+    let email = $state();
+    let role = $state();
+    let project_id = $state();
+    let task_id = $state();
     function create_invite(){
         postp(
             "/invites",
@@ -45,13 +52,17 @@
                 project_id: project_id
             }
           ).then( (data) => {
+                let flash_value;
+                if(!data){
+                    toast.error('bad response');
+                }
                 if(data.errors){
-                    flash_type = 'error';
                     flash_value = data.errors.join(' ');
+                    toast.error(flash_value);
                 }
                 else{
-                    flash_type = 'success';
                     flash_value = "sent to " + data.invite.email;
+                    toast.success(flash_value);
                     get();
                 }
             }
@@ -63,24 +74,19 @@
 </style>
 
 {#if project_manager}
-    {#if flash_type}
-        <div class="text-center flash flash-{flash_type}">
-            {flash_value}
-            <button type=button class="close flash-close js-flash-close">
-                <i class="fa fa-times"></i>
-            </button>
-        </div>
-    {/if}
     <div class="flex justify-around">
         <div>
             Invitations you made
         </div>
         <Modal {...h}>
-            <div slot=summary>
+            {#snippet summary()}
+            <div>
                 Send Invitation
             </div>
-            <div slot=body>
-                <form on:submit|preventDefault={()=>null}>
+            {/snippet}
+            {#snippet body()}
+            <div>
+                <form onsubmit={preventDefault(()=>null)}>
                     <div>
                         <label>Email
                             <input type=text bind:value={email}/>
@@ -94,16 +100,16 @@
                     {#if admin}
                         <div>
                             <label>
-                            	<input type=radio bind:group={role} value={"Project Manager"}>
-                            	Project Manager
+                               <input type=radio bind:group={role} value={"Project Manager"}>
+                               Project Manager
                             </label> 
                         </div>
                     {/if}
                     {#if portal_manager}
                         <div>
                             <label>
-                            	<input type=radio bind:group={role} value={"Portal Manager"}>
-                            	Portal Manager
+                               <input type=radio bind:group={role} value={"Portal Manager"}>
+                               Portal Manager
                             </label> 
                         </div>
                     {/if}
@@ -147,6 +153,7 @@
                       </select> -->
                 </form>
             </div>
+            {/snippet}
             <!-- <div slot=footer>
                 <button type="button" class="{btn}"   data-close-dialog on:click={create_invite}>Send</button>
             </div> -->

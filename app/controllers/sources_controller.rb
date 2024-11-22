@@ -1,6 +1,7 @@
 class SourcesController < ApplicationController
-  skip_before_action :verify_authenticity_token, only: [:create]
-  before_action :authenticate, except: [:uget_public]
+
+  skip_before_action :verify_authenticity_token, only: [ :create ]
+  before_action :authenticate, except: [ :uget_public ]
 
   def new
     @source = Source.new
@@ -23,15 +24,15 @@ class SourcesController < ApplicationController
       end
       format.json do
         partial = params[:partial] || 'upload'
-        html = render_to_string(partial:)
-        render json: { html: }
+        html = render_to_string(:partial => partial)
+        render json: { html: html }
       end
     end
   end
 
   def create
     source = Source.create!(nvparams)
-    source.update(uid: source&.file&.blob&.key) if source.uid.nil?
+    source.update(uid: source&.file&.blob.key) if source.uid.nil?
     source.update(user_id: current_user.id)
     # source = Source.last
     respond_to do |format|
@@ -56,4 +57,6 @@ class SourcesController < ApplicationController
   def nvparams
     params.require(:source).permit(:uid, :file, :task_id)
   end
+
 end
+

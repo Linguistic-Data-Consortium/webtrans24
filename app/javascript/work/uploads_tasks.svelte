@@ -1,7 +1,5 @@
 <script>
     import { btn } from "./buttons"
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
     import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Help from './help.svelte'
     import Table from '../lib/ldcjs/work/table.svelte';
@@ -100,6 +98,6 @@
         <div class="float-right p-2">
             <!-- {v.name} {object_id} -->
         </div>
-        <Table bind:selected={object_id} bind:index={object_index} {columns} rows={v} use_filter={true} key_column=uid height="96" />
+        <Table bind:selected={object_id} indexf={x => object_index = x} {columns} rows={v} use_filter={true} key_column=uid height="96" />
     {/await}
 {/await}

@@ -79,7 +79,7 @@ class ProjectsController < ApplicationController
                   source_uid: x.meta['docid']
                 }
               },
-              project_users: project_users
+              members: project_users
             }
           else
             { error: 'Permission denied.' }

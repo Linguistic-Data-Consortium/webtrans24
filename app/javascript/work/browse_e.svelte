@@ -97,7 +97,7 @@
             {/if}
         {/if}
         {#if !open_kit_uid}
-            <Table bind:selected={kit_id} bind:index={kit_index} {columns} {rows} use_filter={true} key_column=id height=400 />
+            <Table bind:selected={kit_id} indexf={x => kit_index = x} {columns} {rows} use_filter={true} key_column=id height=400 />
         {/if}
     {/await}
 </div>

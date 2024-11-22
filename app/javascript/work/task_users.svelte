@@ -1,18 +1,32 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
-    import { postp, deletep } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { run } from 'svelte/legacy';
+    import { postp, deletep } from '../lib/ldcjs/getp';
     import Table from '../lib/ldcjs/work/table.svelte';
     import Modal from '../modal.svelte'
     import TaskUser from './task_user.svelte'
     import SelectUsers from './select_users.svelte'
     import { btn, dbtn } from './buttons'
-    export let project_id;
-    export let task_id;
-    export let task_admin = false;
-    export let task_users;
-    export let project_users;
+    import { ok_reload } from './helpers';
     export const help = false;
+    /**
+     * @typedef {Object} Props
+     * @property {any} project_id
+     * @property {any} task_id
+     * @property {boolean} [task_admin]
+     * @property {any} task_users
+     * @property {any} project_users
+     * @property {any} reload
+     */
+
+    /** @type {Props} */
+    let {
+        project_id,
+        task_id,
+        task_admin = false,
+        task_users,
+        project_users,
+        reload
+    } = $props();
     let unused = project_id;
     let columns = [
         [ 'User ID', 'user_id', 'col-1' ],
@@ -29,72 +43,50 @@
             [ 'Cancel', btn, null ]
         ]
     };
-    let flash_type = null;
-    let flash_value;
-    function response(data){
-        if(data.error){
-            flash_type = 'error';
-            flash_value = data.error.join(' ');
-        }
-        else{
-            flash_type = 'success';
-            if(data.deleted){
-                flash_value = data.deleted;
-            }
-            else{
-                flash_value = data.ok;
-            }
-            setTimeout( () => dispatch('reload', '') , 1000 );
-        }
-    }
     function create(){
         postp(
             `/task_users`,
             { task_id: task_id, user_id: user_id }
-        ).then(response);
+        ).then(x => ok_reload(x, reload));
     }
     function destroy(){
         deletep(
             `/task_users/${task_user_id}`
-        ).then(response);
+        ).then(x => ok_reload(x, reload));
     }
-    let task_user_id;
-    let task_user_index;
+    let task_user_id = $state();
+    let task_user_index = $state();
     let user_id;
     function auto2(x){
         user_id = x.user_id;
         create();
     }
-    let is_admin;
-    $: {
+    let is_admin = $state();
+    run(() => {
         if(task_user_id){
             is_admin = task_user_index[task_user_id].admin;
         }
-    }
+    });
 </script>
 
 <style>
 </style>
 
-{#if flash_type}
-    <div class="text-center flash flash-{flash_type} mb-3">
-        {flash_value}
-        <button type=button class="close flash-close js-flash-close">
-            <i class="fa fa-times"></i>
-        </button>
-    </div>
-{/if}
 <div class="flex justify-around">
     <div>Members</div>
     {#if task_user_id}
         {#if task_admin}
             <Modal {...deletem}>
-                <div slot=summary>
+                {#snippet summary()}
+                <div>
                     Remove User
                 </div>
-                <div slot=body>
+                {/snippet}
+                {#snippet body()}
+                <div>
                     This will remove {task_user_index[task_user_id].name}, are you sure you want to do this?
                 </div>
+                {/snippet}
             </Modal>
         {/if}
     {/if}
@@ -104,13 +96,13 @@
 </div>
 <div class="flex">
     <div class="w-1/2 col-{task_user_id ? '6' : '12'}">
-        <Table bind:selected={task_user_id} bind:index={task_user_index} {columns} rows={task_users} use_filter={true} key_column=id height=400 />
+        <Table bind:selected={task_user_id} indexf={x => task_user_index = x} {columns} rows={task_users} use_filter={true} key_column=id height=400 />
     </div>
     <div class="float-left col-6 p-6">
         {#if task_user_id && task_admin}
             {#each task_users as x}
                 {#if x.id == task_user_id}
-                    <TaskUser id={x.id} is_admin={x.admin} state={x.state} on:reload />
+                    <TaskUser id={x.id} is_admin={x.admin} xstate={x.state} {reload} />
                 {/if}
             {/each}
         {/if}

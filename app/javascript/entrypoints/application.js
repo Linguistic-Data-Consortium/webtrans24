@@ -30,10 +30,12 @@ console.log('Visit the guide for more information: ', 'https://vite-ruby.netlify
 // import '~/index.css'
 
 import '../guides/guide.js'
+import '../src/app.css'
 
+import { mount } from 'svelte'
 import Header from '../header.svelte'
 const h = {}
-const header = new Header({
+const header = mount(Header, {
   target: $('.Header')[0],
   props: h
 });

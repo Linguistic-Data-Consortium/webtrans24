@@ -7,7 +7,7 @@ function parse(text){
         // console.log(x);
         // if(i == 100) break;
         const y = x.split("\t");
-        if(y[0].match(/^utterance/)) continue;
+        if(y[0].match(/^(utterance|Kit)/)) continue;
         if(y.length > 1){
             data.push( {
                 id: `segment-${i}`,

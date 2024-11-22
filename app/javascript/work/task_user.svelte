@@ -1,17 +1,17 @@
 <script>
+    import { run } from 'svelte/legacy';
     import { tick } from 'svelte';
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
-    import { getp, patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
-    import Flash from './flash.svelte'
+    import { getp, patchp } from '../lib/ldcjs/getp';
+    import { ok_reload } from './helpers';
     import Spinner from './spinner.svelte'
-    export let id;
-    export let is_admin;
-    export let state;
+    let {
+        id,
+        is_admin = $bindable(),
+        xstate = $bindable(),
+        reload
+    } = $props();
     let states = [ null, 'needs_kit', 'has_kit', 'hold', 'paused' ];
     let p = getp(`/task_users/${id}`);
-    let flash_type;
-    let flash_value;
     let timeout;
     let first = true;
     function update(x){
@@ -23,28 +23,21 @@
             `/task_users/${id}`,
             x
         ).then(
-            function(data){
-                if(data.error){
-                    flash_type = 'error';
-                    flash_value = data.error.join(' ');
-                }
-                else{
-                    flash_type = 'success';
-                    flash_value = data.ok;
-                }
-                setTimeout( () => dispatch('reload', '') , 1000 );
-            }
+            x => ok_reload(x, reload)
         );
     }
-    $: update({ admin: is_admin });
-    $: update({ state: state });
+    run(() => {
+        update({ admin: is_admin });
+    });
+    run(() => {
+        update({ state: xstate });
+    });
     tick().then( () => first = false );
 </script>
 
 <style>
 </style>
 
-<Flash {flash_type} {flash_value} />
 <div>
     <form>
         <label>
@@ -53,8 +46,8 @@
        </label>
         <label for=x>
             State
-            {#if states.includes(state)}
-                <select id="x" bind:value={state}>
+            {#if states.includes(xstate)}
+                <select id="x" bind:value={xstate}>
                     {#each states as x}
                         <option value={x}>{x}</option>
                     {/each}

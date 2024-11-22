@@ -1,15 +1,21 @@
 <script>
-    import { createEventDispatcher } from 'svelte';
-    const dispatch = createEventDispatcher();
-    import { postp, deletep } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
+    import { postp, deletep } from '../lib/ldcjs/getp';
     import Table from '../lib/ldcjs/work/table.svelte';
     import Modal from '../modal.svelte'
     import SelectUsers from './select_users.svelte'
     import { btn, dbtn } from './buttons'
-    // export let project_id;
-    export let group_id;
-    export let group_users;
+    import { ok_reload } from './helpers';
+    
     export const help = false;
+    /**
+     * @typedef {Object} Props
+     * @property {any} group_id - export let project_id;
+     * @property {any} group_users
+     * @property {any} reload
+     */
+
+    /** @type {Props} */
+    let { group_id, group_users, reload } = $props();
     let columns = [
         [ 'User ID', 'user_id', 'col-1' ],
         [ 'Name', 'name', 'col-2' ]
@@ -28,37 +34,19 @@
             [ 'Cancel', btn, null ]
         ]
     };
-    let flash_type = null;
-    let flash_value;
-    function response(data){
-        if(data.error){
-            flash_type = 'error';
-            flash_value = data.error.join(' ');
-        }
-        else{
-            flash_type = 'success';
-            if(data.deleted){
-                flash_value = data.deleted;
-            }
-            else{
-                flash_value = data.ok;
-            }
-            setTimeout( () => dispatch('reload', '') , 1000 );
-        }
-    }
     function create(){
         postp(
             `/group_users`,
             { group_id: group_id, user_id: user_id }
-        ).then(response);
+        ).then(x => ok_reload(x, reload));
     }
     function destroy(){
         deletep(
             `/group_users/${group_user_id}`
-        ).then(response);
+        ).then(x => ok_reload(x, reload));
     }
-    let group_user_id;
-    let group_user_index;
+    let group_user_id = $state();
+    let group_user_index = $state();
     let name;
     let user_id;
     let pp;
@@ -78,25 +66,21 @@
 <style>
 </style>
 
-{#if flash_type}
-    <div class="text-center flash flash-{flash_type} mb-3">
-        {flash_value}
-        <button type=button class="close flash-close js-flash-close">
-            <i class="fa fa-times"></i>
-        </button>
-    </div>
-{/if}
 <div class="flex justify-around">
     <div>Members</div>
     {#if group_user_id}
         {#if group_admin}
             <Modal {...deletem}>
-                <div slot=summary>
+                {#snippet summary()}
+                <div >
                     Remove User
                 </div>
-                <div slot=body>
+                {/snippet}
+                {#snippet body()}
+                <div >
                     This will remove {group_user_index[group_user_id].name}, are you sure you want to do this?
                 </div>
+                {/snippet}
             </Modal>
         {/if}
     {/if}
@@ -106,7 +90,7 @@
 </div>
 <div class="flex justify-around p-6">
     <div class="float-left col-6">
-        <Table bind:selected={group_user_id} bind:index={group_user_index} {columns} rows={group_users} use_filter={true} key_column=id height=400 />
+        <Table bind:selected={group_user_id} indexf={x => group_user_index = x} {columns} rows={group_users} use_filter={true} key_column=id height=400 />
     </div>
     <div class="float-left col-6 p-6">
     </div>

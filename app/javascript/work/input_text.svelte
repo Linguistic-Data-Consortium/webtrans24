@@ -1,23 +1,38 @@
 <script>
+    import { run } from 'svelte/legacy';
+
     import { tick } from 'svelte';
-    import { patchp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.3/src/getp.js'
-    export let label;
-    export let key;
-    export let value = null;
-    export let textarea = false;
-    export let url = false;
-    export let meta = false;
-    export let wrap = false;
-    export let required = false;
-    export let split = null;
-    let unused = required;
+    import { flash } from './helpers';
+    /**
+     * @typedef {Object} Props
+     * @property {any} label
+     * @property {any} key
+     * @property {any} [value]
+     * @property {boolean} [textarea]
+     * @property {any} [urlf]
+     * @property {boolean} [meta]
+     * @property {boolean} [wrap]
+     * @property {boolean} [required]
+     * @property {any} [split]
+     */
+
+    /** @type {Props} */
+    let {
+        label,
+        key,
+        value = $bindable(),
+        textarea = false,
+        urlf = null,
+        meta = false,
+        wrap = false,
+        required = false,
+        split = null
+    } = $props();
     if(split && value) value = value.join(split);
-    let flash_type;
-    let flash_value;
-    let flash_css;
     const id = Math.random().toString(36).substring(2);
     function patch(k, v){
-        if(!url){
+        console.log(urlf)
+        if(!urlf){
             return;
         }
         let x = {};
@@ -40,20 +55,8 @@
             y[wrap] = x;
             x = y;
         }
-        patchp( url, x ).then(
-            function(data){
-                if(data.error){
-                    flash_type = 'error';
-                    flash_value = data.error.join(' ');
-                    flash_css = "bg-red-100 border-red-400 text-red-700 px-4 py-3 rounded-full";
-                }
-                else{
-                    flash_type = 'success';
-                    flash_css = "bg-green-100 border-green-400 text-green-700 px-4 py-3 rounded-full";
-                    flash_value = "updated " + k + " to " + (data[k] || (data.meta && data.meta[k]) || (data.constraints && data.constraints[k]));
-                    setTimeout( () => flash_type = null, 2000);
-                }
-            }
+        urlf(x).then(
+            x => flash(x, k)
         );
     }
     let first = true;
@@ -67,11 +70,13 @@
         }
         timeout = setTimeout( () => patch( key, value ) , 1000 );
     }
-    $: update(value);
+    run(() => {
+        update(value);
+    });
     tick().then( () => first = false );
 </script>
 
-<div class="pb-4 {flash_type ? flash_type + "ed" : ''}">
+<div class="pb-4">
     <div class="form-group-header">
         <label for="input-{id}">{label}</label>
     </div>
@@ -82,7 +87,7 @@
                 class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
                 bind:value={value}
                 aria-describedby="input-{id}-validation"
-            />
+            ></textarea>
         {:else}
             <input
                 id="input-{id}"
@@ -91,17 +96,6 @@
                 bind:value={value}
                 aria-describedby="input-{id}-validation"
             />
-        {/if}
-        {#if flash_type}
-            <!-- svelte-ignore a11y-click-events-have-key-events -->
-            <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-            <p
-                id="input-{id}-validation"
-                class="{flash_css}"
-                on:click={ () => flash_type = null }
-            >
-                {flash_value}
-            </p>
         {/if}
     </div>
 </div>

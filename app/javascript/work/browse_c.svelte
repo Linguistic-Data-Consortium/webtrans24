@@ -72,6 +72,6 @@
     {#await p}
         <div class="mx-auto w-8 h-8"><Spinner /></div>
     {:then rows}
-        <Table bind:selected={source_id} bind:index={source_index} {columns} {rows} use_filter={true} key_column=source_id height=500 />
+        <Table bind:selected={source_id} indexf={x => source_index = x} {columns} {rows} use_filter={true} key_column=source_id height=500 />
     {/await}
 {/if}

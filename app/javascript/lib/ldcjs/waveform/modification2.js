@@ -1,25 +1,30 @@
-import { postp } from '../getp';
+import { postp, postp_no_catch } from '../getp';
 let messages = []; // message(s) to send to the annotate controller
 const submissions = {}; // messages sent
 let annotations_promise = Promise.resolve();
 //this function adds a message to the queue for annotation
+let ldc;
+function setldc(x){
+  ldc = x;
+  ldc.avm = avm;
+}
 function add_message(n, m, v){
     if(m == 'add'){
         // console.log('aaaaaaaaaaaaa')
         // console.log(n)
         // console.log(nodes[n])
         // console.log(ldc_nodes.get_node_class(nodes[n].meta.node_class_id))
-        if(window.ldc && window.ldc.addf){
-            v = window.ldc.addf(n);
+        if(ldc && ldc.addf){
+            v = ldc.addf(n);
             n = '0';
         }
         else{
             v = window.nodes[n].meta.node_class_id;
         }
     }
-    if(m == 'change' && window.ldc && window.ldc.changef) n = window.ldc.changef(n, v);
-    if(m == 'delete' && window.ldc && window.ldc.deletef) window.ldc.deletef(n);
-    if(n == '0' && window.ldc) n = 0;
+    if(m == 'change' && ldc && ldc.changef) n = ldc.changef(n, v);
+    if(m == 'delete' && ldc && ldc.deletef) ldc.deletef(n);
+    if(n == '0' && ldc) n = 0;
     messages.push( { node: n, message: m, value: v } );
 }
 function add_message_listitem(list, child_values_to_add){
@@ -63,10 +68,10 @@ function submit_form_old(m){
     obj.messages = messages;
     d = new Date();
     obj.client_time = d.getTime();
-    obj.kit_uid = $('.Root').data().obj._id
-    obj.xlass_def_id = $('.Root').data().obj.xlass_def_id
+    obj.kit_uid = ldc.obj2._id
+    obj.xlass_def_id = ldc.obj2.xlass_def_id
     if(messages.length > 0){
-        if($('.Root').data().obj.read_only){
+        if(ldc.obj2.read_only){
             var mmessage = 'read only, json request would have been: ' + JSON.stringify(obj);
             alert(mmessage);
         }
@@ -74,7 +79,7 @@ function submit_form_old(m){
             var url = '/annotations';
             submissions[obj.client_time] = obj
             pending_save_before(messages);
-            promise = postp(url, { task_user_id: $('.Root').data().obj.task_user_id, json: JSON.stringify(obj) }).then(function(data){ console.time('annotate2'); annotate2(data, obj.client_time); console.timeEnd('annotate2'); });
+            promise = postp_no_catch(url, { task_user_id: ldc.obj2.task_user_id, json: JSON.stringify(obj) }).then(function(data){ console.time('annotate2'); annotate2(data, obj.client_time); console.timeEnd('annotate2'); });
             obj.received = false;
             submissions[obj.client_time] = obj;
         }
@@ -142,8 +147,8 @@ const avm = {
                   id = x.meta.id;
                   name = x.meta.name;
                 }
-                if(window.ldc.obj){
-                  for(let y of window.ldc.obj.nodes){
+                if(ldc.obj){
+                  for(let y of ldc.obj.nodes){
                     if(y.iid == id){
                       if (y.name !== name) {
                         console.log('problem')
@@ -237,7 +242,7 @@ function pending_save_before(messages){
     $.each(messages, function(i, m){
         // console.log(i);
         // console.log(m);
-        if(!window.ldc.nodes){
+        if(!ldc.nodes){
         if(m.message == 'change'){
             selector = '#node-' + m.node;
             window.pending_save_change(m);
@@ -251,13 +256,17 @@ function pending_save_before(messages){
         }
         save_message(m);
     });
-    if(window.ldc.nodes) return;
+    if(ldc.nodes) return;
     window.after_annotate(messages, null, null);
 }
 
 function annotate2(messages, client_time){
     console.log(client_time);
     submissions[client_time].received = true;
+    if(!messages){
+      alert('server request failed');
+      return;
+    }
     if(messages.error){
         alert('error');
         console.error(messages.error)
@@ -303,7 +312,7 @@ function annotate2(messages, client_time){
                 return;
             }
         }
-        if(window.ldc && window.ldc.obj){
+        if(ldc && ldc.obj){
             $('#node-0-dummy').remove();
             return;
         }
@@ -311,4 +320,4 @@ function annotate2(messages, client_time){
 }
 
 
-export { add_message, add_message_listitem, submit_form, add_callback }
+export { setldc, add_message, add_message_listitem, submit_form, add_callback }
