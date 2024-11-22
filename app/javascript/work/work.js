@@ -97,7 +97,6 @@ let workflow = null;
       window.ldc.resources.manifest = hash.manifest;
       window.ldc.get_constraint = window.get_constraint;
       window.ldc.services_init = window.services_init;
-      window.ldc.sad = window.sad;
       window.ldc.$ = window.$;
       const kit = hash.initt;
       console.log(kit)
@@ -813,39 +812,6 @@ let workflow = null;
         });
       });
     }
-    window.sad = function(o, ff) {
-      // url = 'https://nieuw-hlt.ldc.upenn.edu/promises'
-      // url = url.replace ':4567', '' if external
-      return postp(create_promises_url, o).then( function(oo) {
-        var f, url2;
-        console.log('HERE');
-        console.log(oo);
-        url2 = oo.promiseStatusUrl;
-        url2 = `${create_promises_url}/${oo.id}`;
-        f = function() {
-          return getp(url2).then( function(data) {
-            var url3;
-            console.log("HERE");
-            console.log(data);
-            $('.waiting').append('*');
-            if (data.status === 'resolved') {
-              console.log('DONE');
-              $('.waiting').remove();
-              url3 = data.data[0].output;
-              console.log(url3);
-              return getp(url3).then( function(data) {
-                return ff(data);
-              });
-            } else {
-              return setTimeout(function() {
-                return f();
-              }, 1000);
-            }
-          });
-        };
-        return f();
-      });
-    };
     window.align = function(data2, f22) {
       var f3, url;
       f3 = function(url3) {

@@ -17,7 +17,7 @@ gem "sprockets-rails"
 # Use Puma as the app server
 gem 'puma', '6.4.2'
 
-gem 'vite_rails'
+gem 'vite_rails', '3.0.18'
 
 # Use SCSS for stylesheets
 gem "autoprefixer-rails", '~> 6.5.1'
@@ -93,6 +93,6 @@ group :test do
   gem 'database_cleaner'
 end
 
-gem "tailwindcss-rails", "2.2.1"
+gem "tailwindcss-rails", "2.7.8"
 
 gem "jsbundling-rails", "~> 1.2"

@@ -1,3 +1,4 @@
+import { mount } from 'svelte';
 import App from './work/users.svelte'
 import Index from './users/index.svelte'
 // import { Browser } from './work/browser'
@@ -102,7 +103,7 @@ export var ldc_users = function(){
         init_show: function(){
           const permissions = document.getElementById('permissions').dataset;
           // const browser = new Browser();
-          const app = new App({
+          const app = mount(App, {
               target: document.getElementById('main'),
               props: {
                   admin: (permissions.admin == 'true'),
@@ -141,7 +142,7 @@ export var ldc_users = function(){
 
         //this function is called when initializing the index view
         init_index: function(){
-            const app = new Index({
+            const app = mount(Index, {
                 target: document.getElementById('main'),
                 props: {
                   name: 'SvelteX',
