@@ -631,6 +631,18 @@
                 return 'displaying segments...';
             });
         }
+        if(x == 'add_asr_rev'){
+             add_which = 'asr';
+             dialog_asr.showModal();
+             const cb = () => dialog_asr.close();
+             add_sad_p2_message = 'running asr...';
+             const type = 'rev';
+             add_sad_p2 = xasr(type).then(xasrr);
+             add_sad_p3 = add_sad_p2.then(() => {
+                 cb();
+                 return 'displaying segments...';
+             });
+        }
         if(x == 'upload_transcript'){
             dialog_upload_transcript.showModal()
             // if(constraint_import_transcript_auto) data_set_file_name = docid;
@@ -2187,7 +2199,8 @@
         "h": "main",
         '1': "add_sad",
         '2': "add_asr",
-        '3': "add_asr_korean"
+        '3': "add_asr_korean",
+        '4': "add_asr_rev"
     };
     function dialog_services_keydown(e){
         dialog_services.close();
@@ -3476,9 +3489,35 @@
 
     async function xasr(type){
         if(asrp) return;
-        asrp = add_asr_sendx(docid, type).then(xasr_process)
+        asrp = add_asr_sendx(docid, type);
+        if(type == 'rev') asrp = asrp.then(split_word_sequence);
+        asrp = asrp.then(xasr_process);
         // asrp = add_asr_sendx2(docid);
         return asrp;
+    }
+
+    function split_word_sequence(x){
+        let segments = [];
+        x = x.filter( x => x.beg != x.end );
+        let last = null;
+        let ch_0 = 'ch_0';
+        let ch_1 = 'ch_1';
+        if(active_channeln == 1){
+           ch_0 = 'ch_1';
+           ch_1 = 'ch_0';
+        }
+        for(const y of x){
+            if(last && (y.beg == last.end) && (y.speaker == last.speaker)){
+                last.text += ` ${y.text}`;
+                last.end = y.end;
+            }
+            else{
+                y.channel = stereo && y.speaker != '0' ? ch_1 : ch_0;
+                segments.push(y);
+                last = y;
+            }
+        }
+        return segments;
     }
 
     let asr_addedn = -1;
@@ -4268,9 +4307,11 @@
                                 }
                                 c1.begi = x.beg;
                                 c1.endi = x.end;
-                                c1.docid = nmap.get(x.beg).docid;
-                                c1.beg = nmap.get(x.beg).beg;
-                                c1.end = nmap.get(x.end).beg;
+                                let xbeg = nmap.get(x.beg);
+                                let xend = nmap.get(x.end);
+                                c1.docid = xbeg?.docid;
+                                c1.beg = xbeg?.beg;
+                                c1.end = xend?.beg;
                                 if(debug){
                                     console.log('sort')
                                     console.log(c1)
@@ -5072,6 +5113,9 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
             </li>
             <li>
                 3. ASR (Korean)
+            </li>
+            <li>
+                4. ASR (Rev.ai)
             </li>
         </ol>
     </div>

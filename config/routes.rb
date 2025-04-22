@@ -192,7 +192,8 @@ Rails.application.routes.draw do
 
   get '/bucket', to: 'data_sets#bucket'
   post '/token', to: 'cognito_token#get_credentials'
-
+  post '/rev', to: "rev#rev"
+  
   resources :actions, only: [ :create ]
   resources :xamespaces, except: [ :new, :edit ]
 
