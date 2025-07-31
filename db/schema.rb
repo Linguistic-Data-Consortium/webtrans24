@@ -576,6 +576,33 @@ ActiveRecord::Schema.define(version: 2023_10_11_135037) do
     t.index ["user_id", "name"], name: "index_scripts_on_user_id_and_name", unique: true
   end
 
+  create_table "sections", force: :cascade do |t|
+    t.bigint "tree_id", null: false
+    t.bigint "iid", null: false
+    t.bigint "begn"
+    t.bigint "endn"
+    t.decimal "btime", precision: 12, scale: 6
+    t.decimal "etime", precision: 12, scale: 6
+    t.text "name"
+    t.index ["tree_id", "begn"], name: "index_sections_on_tree_id_and_begn"
+    t.index ["tree_id", "endn"], name: "index_sections_on_tree_id_and_endn"
+    t.index ["tree_id", "iid"], name: "index_sections_on_tree_id_and_iid", unique: true
+  end
+
+  create_table "segments", force: :cascade do |t|
+    t.bigint "tree_id", null: false
+    t.bigint "iid", null: false
+    t.bigint "begn"
+    t.bigint "endn"
+    t.decimal "btime", precision: 12, scale: 6
+    t.decimal "etime", precision: 12, scale: 6
+    t.text "text"
+    t.text "speaker"
+    t.index ["tree_id", "begn"], name: "index_segments_on_tree_id_and_begn"
+    t.index ["tree_id", "endn"], name: "index_segments_on_tree_id_and_endn"
+    t.index ["tree_id", "iid"], name: "index_segments_on_tree_id_and_iid", unique: true
+  end
+
   create_table "servers", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
