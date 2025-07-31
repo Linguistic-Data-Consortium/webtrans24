@@ -86,6 +86,10 @@
         {
           "name": "SECRET_KEY_BASE",
           "valueFrom": ""
+        },
+        {
+          "name": "REV_TOKEN",
+          "valueFrom": ""
         }
       ],
       "essential": true,
