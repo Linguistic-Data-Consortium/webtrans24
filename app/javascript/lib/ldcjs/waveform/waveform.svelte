@@ -3,12 +3,12 @@
     let last_audio;
     import * as DropdownMenu from "$lib/components/ui/dropdown-menu"
     import * as Dialog from "$lib/components/ui/dialog"
-    import { Textarea } from "$lib/components/ui/textarea";
-    import { Button, buttonVariants } from "$lib/components/ui/button";
-    import { Label } from "$lib/components/ui/label";
-    import { Input } from "$lib/components/ui/input";
-    import * as RadioGroup from "$lib/components/ui/radio-group";
-    import { ArrowUpFromLine, ArrowDownToLine, Check, X, CircleCheck } from 'lucide-svelte';
+    import * as Popover from "$lib/components/ui/popover"
+    import * as Card from "$lib/components/ui/card"
+    import { Label } from "$lib/components/ui/label"
+    import * as RadioGroup from "$lib/components/ui/radio-group"
+    import { Button } from "$lib/components/ui/button"
+    import { ArrowUpFromLine, ArrowDownToLine, Check, X } from 'lucide-svelte';
     import { tick, createEventDispatcher, onMount, onDestroy } from 'svelte';
     const dispatch = createEventDispatcher();
     import { btn, cbtn, dbtn, btn1 } from '../work/buttons';
@@ -56,7 +56,7 @@
     import { x as keymap } from './keys_waveform'
     import { x as inputmap } from './keys_input'
     import { x as playbackmap } from './keys_playback';
-    import { getp, getp_wav, postp } from '../getp';
+    import { getp, getp_wav, postp, getp_simple } from '../getp';
     import { ParseB } from './parse_b';
     import Spinner from '../work/spinner.svelte';
     import parse_sad_with_aws from './parse_sad_with_aws';
@@ -99,6 +99,7 @@
     export let constraint_section_order_forced;
     export let constraint_add_asr_segments;
     export let constraint_asr_korean;
+    export let constraint_audit;
     export let xlass_def_id;
     const kit_id = ldc.obj2._id;
 
@@ -271,7 +272,7 @@
         // } );
         keyboard.focus();
         if(constraint_add_asr_segments && ldc.nodes.size == 0){
-            let type = constraint_asr_korean ? 'asr5' : 'asr3';
+            let type = constraint_asr_korean ? 'asr5' : 'asr4';
             if(window.ldc.vars.task_id == 169) type = 'asr4';
             xasr(type).then(xasrr);
         }
@@ -582,7 +583,7 @@
                     return 'displaying segments...';
                 } );
             }
-            else if(true){
+            else if(!addasr3(source_uid)){
                 add_which = 'asr';
                 dialog_asr.showModal();
                 const cb = () => dialog_asr.close();
@@ -632,16 +633,18 @@
             });
         }
         if(x == 'add_asr_rev'){
-             add_which = 'asr';
-             dialog_asr.showModal();
-             const cb = () => dialog_asr.close();
-             add_sad_p2_message = 'running asr...';
-             const type = 'rev';
-             add_sad_p2 = xasr(type).then(xasrr);
-             add_sad_p3 = add_sad_p2.then(() => {
-                 cb();
-                 return 'displaying segments...';
-             });
+            alert('unavailable');
+            return;
+            add_which = 'asr';
+            dialog_asr.showModal();
+            const cb = () => dialog_asr.close();
+            add_sad_p2_message = 'running asr...';
+            const type = 'rev';
+            add_sad_p2 = xasr(type).then(xasrr);
+            add_sad_p3 = add_sad_p2.then(() => {
+                cb();
+                return 'displaying segments...';
+            });
         }
         if(x == 'upload_transcript'){
             dialog_upload_transcript.showModal()
@@ -2210,19 +2213,21 @@
     let dialog_asr;
     let dialog_download_transcript;
     let dialog_close_kit;
-    let dialog_close_kit_audit;
+    let dialog_close_kit_audit = "";
     let done_comment;
     let broken_comment;
+    let dialog_close_kit_donef_popover_isopen = false;
     function dialog_close_kit_donef(){
-        console.log(dialog_close_kit_audit);
-        return;
+        dialog_close_kit_donef_popover_isopen = false;
         let c = null;
         if(done_comment && done_comment.length) c = done_comment;
         done(c);
     }
+    function dialog_close_kit_donef_c(c){
+        done_comment = c;
+        dialog_close_kit_donef();
+    }
     function dialog_close_kit_brokenf(){
-        console.log(broken_comment);
-        return;
         let c = null;
         if(broken_comment && broken_comment.length) c = broken_comment;
         broken(c);
@@ -2771,8 +2776,17 @@
         while(i < t_value.length && t_value[i] != ' ') i++;
         const b = i;
         const { x, y, z } = three_way_split(t_value, a, b);
+        let extra = 4;
         if(type == 'unintelligible'){
             t_value = `${x}((${y}))${z}`;
+        }
+        else if(type == 'laugh'){
+            t_value = y.length ? `${x}<laugh>${y}</laugh>${z}` : `${x}{laugh}${z}`;
+            extra = 15;
+        }
+        else if(type == 'sing'){
+            t_value = y.length ? `${x}<sing>${y}</sing>${z}` : `${x}{sing}${z}`;
+            extra = 13;
         }
         else if(type == 'redact'){
             const span = {
@@ -2782,7 +2796,8 @@
                 speaker: 'redacted'
             };
             add_audio_to_list(wave_docid, null, null, span);
-            t_value = `${x} <redact>${y}</redact> ${z}`;
+            t_value = `${x}<redact>${y}</redact>${z}`;
+            extra = 17;
         }
         // if(ldc.nodes){
         //     console.log('here')
@@ -2794,7 +2809,7 @@
         // }
         // change_value(iid, edit, f);
         setTimeout( () => {
-            input.selectionStart = input.selectionEnd = x.length + y.length + 4;
+            input.selectionStart = input.selectionEnd = x.length + y.length + extra;
         }, 100);
 
     }
@@ -3298,7 +3313,9 @@
         else if(e.detail.userf == 'generic_next')                  generic_next(x);
         else if(e.detail.userf == 'tag_redact')                    insert_surrounding_tags('redact');
         else if(e.detail.userf == 'tag_unintelligible')            insert_surrounding_tags('unintelligible');
-        else if(e.detail.userf == 'tag_laugh')                     insert_laugh();
+        // else if(e.detail.userf == 'tag_laugh')                     insert_laugh();
+        else if(e.detail.userf == 'tag_laugh')                     insert_surrounding_tags('laugh');
+        else if(e.detail.userf == 'tag_sing')                     insert_surrounding_tags('sing');
         else if(e.detail.userf == 'split_segment_at_cursor')            split_segment_at_cursor(cursortime, split_line_margin, update_segments);
         else if(e.detail.userf == 'merge_with_following_segment')            merge_with_following_segment(find_active_id(), wmap, update_segments);
         else if(e.detail.userf == 'play_current_span') play_current_span();
@@ -3503,8 +3520,8 @@
         let ch_0 = 'ch_0';
         let ch_1 = 'ch_1';
         if(active_channeln == 1){
-           ch_0 = 'ch_1';
-           ch_1 = 'ch_0';
+            ch_0 = 'ch_1';
+            ch_1 = 'ch_0';
         }
         for(const y of x){
             if(last && (y.beg == last.end) && (y.speaker == last.speaker)){
@@ -4694,7 +4711,7 @@
         let p = add_sad(x);
         let p2 = p.then( (url) => {
             const o = { type: 'sad', data: { audio: url } };
-            if(x.startsWith('s3://')) return get_hlt_promise(x, 'sad').then(check_channels);
+            // if(x.startsWith('s3://')) return get_hlt_promise(x, 'sad').then(check_channels);
             return hlt_sad(o, function(data) {
                 return check_channels(data);
             } );
@@ -4785,6 +4802,10 @@
 
     function addasr1(source_uid){
         return source_uid.match(/anno-difp/);
+    }
+
+    function addasr3(source_uid){
+        return source_uid.match(/northwell|ldc-car-data/);
     }
 
     function addasr2(source_uid){
@@ -5306,7 +5327,6 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
     </div>
 </dialog>
 
-
 <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 <dialog bind:this={dialog_close_kit} on:click={(e) => e.target.tagName == 'DIALOG' && dialog_close_kit.close()} on:keypress={() => null} class="sm:max-w-4xl p-1 rounded-lg shadow-xl">
     <!-- <ModalHeader title="Close Transcript, Move to Next File" /> -->
@@ -5314,16 +5334,17 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
         <div>Close Transcript, Move to Next File</div>
         <div class="overflow-auto">
             <button class="{cbtn} w-full mb-2" on:click={dialog_close_kit_donef} use:event.dispatch={'drew_done'}>Done</button>
-            <Textarea
+            <textarea
+                class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
                 bind:value={done_comment}
                 placeholder="comment (optional)"
-            />
+            ></textarea>
             <hr class="mb-2">
             <div>Was there a problem with this file?</div>
             <div class="m-2">
                 <div class="form-group">
                     <div class="form-group-header">
-                        <label>                              
+                        <label>
                             <input
                                 class="focus:ring-indigo-500 focus:border-indigo-500 h-4 w-4 border-gray-300"
                                 type=radio
@@ -5349,10 +5370,11 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 </div>
             </div>
             {#if dialog_close_kit_audit == 'broken' }
-                <Textarea
+                <textarea
+                class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
                 bind:value={broken_comment}
                 placeholder="comment (optional)"
-                />
+                ></textarea>
             {/if}
             {#if dialog_close_kit_audit == 'skip'}
                 <div><button class="{dbtn} w-full" data-close-dialog on:click={skip}>Confirm Skip</button></div>
@@ -5481,49 +5503,81 @@ The <b>mode</b> is indicated next to the keyboard icon in the upper right of the
                 </div>
             {/if}
             <div class="col-span-2 float-left" use:event.dispatch={'drew_submit'}>
-                <Dialog.Root>
-                    <Dialog.Trigger class={buttonVariants({ variant: "secondary" })}>
-                        <CircleCheck size=20 />
-                    </Dialog.Trigger>
-                    <Dialog.Content>
-                        <Dialog.Header>
-                            <Dialog.Title>Close Transcript, Move to Next File</Dialog.Title>
-                            <Dialog.Description>
-                            This action cannot be undone. This will permanently delete your account
-                            and remove your data from our servers.
-                            </Dialog.Description>
-                        </Dialog.Header>
-                        <Button variant="secondary" on:click={dialog_close_kit_donef}>Done</Button>
-                        <Textarea
-                            bind:value={done_comment}
-                            placeholder="comment (optional)"
-                        />
-                        <hr class="mb-2">
-                        <div>Was there a problem with this file?</div>
-                        <RadioGroup.Root bind:value={dialog_close_kit_audit}>
-                            <div class="flex items-center space-x-2">
-                              <RadioGroup.Item value="skip" id="r1" />
-                              <Label for="r1">Skip</Label>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                              <RadioGroup.Item value="broken" id="r2" />
-                              <Label for="r2">Broken</Label>
-                            </div>
-                        </RadioGroup.Root>
-                        {#if dialog_close_kit_audit == 'broken' }
-                            <Textarea
-                                bind:value={broken_comment}
-                                placeholder="comment (optional)"
-                            />
-                        {/if}
-                        {#if dialog_close_kit_audit == 'skip'}
-                            <div><button class="{dbtn} w-full" data-close-dialog on:click={skip}>Confirm Skip</button></div>
-                        {/if}
-                        {#if dialog_close_kit_audit == 'broken'}
-                            <div><button class="{dbtn} w-full" data-close-dialog on:click={dialog_close_kit_brokenf}>Confirm Broken</button></div>
-                        {/if}
-                    </Dialog.Content>
-                </Dialog.Root>
+                {#if constraint_audit}
+                    <Popover.Root  bind:open={dialog_close_kit_donef_popover_isopen} >
+                        <Popover.Trigger>
+                            <!-- svelte-ignore a11y_consider_explicit_label -->
+                            <button class={btn}>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </Popover.Trigger>
+                        <Popover.Content>
+                            <Card.Root>
+                              <Card.Header>
+                                <Card.Title>Close Transcript</Card.Title>
+                                <Card.Description>Move to Next File</Card.Description>
+                              </Card.Header>
+                              <Card.Content>
+                                    <div><Button variant="outline" class="w-full mb-2" onclick={() => dialog_close_kit_donef_c("yes")}>Done comment Yes</Button></div>
+                                    <div><Button variant="outline" class="w-full mb-2" onclick={() => dialog_close_kit_donef_c("no")}>Done comment No</Button></div>
+                                    <div><Button variant="outline" class="w-full mb-2" onclick={() => dialog_close_kit_donef_c("maybe")}>Done comment Maybe</Button></div>
+                                    <div><button class="{cbtn} w-full mb-2" on:click={dialog_close_kit_donef} use:event.dispatch={'drew_done'}>Done</button></div>
+                                    <textarea
+                                        class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
+                                        bind:value={done_comment}
+                                        placeholder="comment (optional)"
+                                    ></textarea>
+                                    <div
+                                        class="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t"
+                                    >
+                                        <span class="bg-card text-muted-foreground relative z-10 px-2">
+                                            Was there a problem with this file?
+                                        </span>
+                                    </div>
+                                    <hr class="mb-2">
+                                    <RadioGroup.Root bind:value={dialog_close_kit_audit} class="mb-2" >
+                                        <div class="flex items-center space-x-2">
+                                            <RadioGroup.Item value="skip" id="option-skip"
+                                                class="focus:ring-indigo-500 focus:border-indigo-500 h-4 w-4 border-gray-300"
+                                            />
+                                            <Label for="option-skip">Skip</Label>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <RadioGroup.Item value="broken" id="option-broken"
+                                                class="focus:ring-indigo-500 focus:border-indigo-500 h-4 w-4 border-gray-300"
+                                            />
+                                            <Label for="option-broken">Broken</Label>
+                                        </div>
+                                    </RadioGroup.Root>
+                                    {#if dialog_close_kit_audit == 'broken' }
+                                        <textarea
+                                        class="mb-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
+                                        bind:value={broken_comment}
+                                        placeholder="comment (optional)"
+                                        ></textarea>
+                                    {/if}
+                                    {#if dialog_close_kit_audit == 'skip'}
+                                        <div><button class="{dbtn} w-full" data-close-dialog on:click={skip}>Confirm Skip</button></div>
+                                    {/if}
+                                    {#if dialog_close_kit_audit == 'broken'}
+                                        <div><button class="{dbtn} w-full" data-close-dialog on:click={dialog_close_kit_brokenf}>Confirm Broken</button></div>
+                                    {/if}
+                              </Card.Content>
+                              <Card.Footer>
+                              </Card.Footer>
+                            </Card.Root>
+                        </Popover.Content>
+                    </Popover.Root>
+                {:else}
+                    <!-- svelte-ignore a11y_consider_explicit_label -->
+                    <button class={btn} on:click={ () => show('close_kit') }>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                {/if}
             </div>
             {#if show_asr}
                 <!-- svelte-ignore a11y-click-events-have-key-events -->

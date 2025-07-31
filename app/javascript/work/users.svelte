@@ -9,13 +9,6 @@
     import { btn, cbtn, dbtn } from "./buttons"
     import { getp } from 'https://cdn.jsdelivr.net/gh/Linguistic-Data-Consortium/ldcjs@0.0.9/src/getp.js'
     import Help from './help.svelte';
-    import UsersTasks from './users_tasks.svelte';
-    import Projects from './projects.svelte';
-    import KitTypes from './kit_types.svelte';
-    import ClassDefs from './class_defs.svelte';
-    import XlassDefs from './xlass_defs.svelte';
-    import DataSets from './data_sets.svelte';
-    import Invites from './invites.svelte';
     import Browse from './browse_f.svelte';
     import Spinner from './spinner.svelte'
     import Table from '../lib/ldcjs/work/table.svelte';
@@ -23,9 +16,8 @@
     import InputText from './input_text.svelte';
     import InputSelect from './input_select.svelte';
     import InputCheckbox from './input_checkbox.svelte';
-    import ProjectUser from './project_user.svelte';
-    import TaskUser from './task_user.svelte';
     import Kits from './kits.svelte';
+    import DoneKits from './done_kits.svelte';
     import { controller_actions } from './controllers';
     import { toast } from "svelte-sonner";
     import { response, ok_reload } from './helpers';
@@ -680,52 +672,68 @@
 <Tabs.Root bind:value={tab} class="w-full justify-center" onValueChange={tabs}>
     <Tabs.List>
         <Tabs.Trigger value="tasks">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Work</Tooltip.Trigger>
-                <Tooltip.Content>your tasks with links to start</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Work</Tooltip.Trigger>
+                    <Tooltip.Content>your tasks with links to start</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="projects">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Projects</Tooltip.Trigger>
-                <Tooltip.Content>projects, tasks, kits</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Projects</Tooltip.Trigger>
+                    <Tooltip.Content>projects, tasks, kits</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="browse">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Browse</Tooltip.Trigger>
-                <Tooltip.Content>browse uploaded files</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Browse</Tooltip.Trigger>
+                    <Tooltip.Content>browse uploaded files</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="kit_types">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Kit Types</Tooltip.Trigger>
-                <Tooltip.Content>tasks require a kit type</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Kit Types</Tooltip.Trigger>
+                    <Tooltip.Content>tasks require a kit type</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="features">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Features</Tooltip.Trigger>
-                <Tooltip.Content>features for different objects</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Features</Tooltip.Trigger>
+                    <Tooltip.Content>features for different objects</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="workflows">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Workflows</Tooltip.Trigger>
-                <Tooltip.Content>workflows</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Workflows</Tooltip.Trigger>
+                    <Tooltip.Content>workflows</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="groups">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Groups</Tooltip.Trigger>
-                <Tooltip.Content>users can be added to groups</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Groups</Tooltip.Trigger>
+                    <Tooltip.Content>users can be added to groups</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
         <Tabs.Trigger value="permissions">
-            <Tooltip.Root>
-                <Tooltip.Trigger>Permissions</Tooltip.Trigger>
-                <Tooltip.Content>explore roles and permissions</Tooltip.Content>
-            </Tooltip.Root>
+            <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>Permissions</Tooltip.Trigger>
+                    <Tooltip.Content>explore roles and permissions</Tooltip.Content>
+                </Tooltip.Root>
+            </Tooltip.Provider>
         </Tabs.Trigger>
     </Tabs.List>
     <Tabs.Content value="tasks">
@@ -820,6 +828,7 @@
                                                 <Tabs.List>
                                                     <Tabs.Trigger value="info">Task Info</Tabs.Trigger>
                                                     <Tabs.Trigger value="kits">Kits</Tabs.Trigger>
+                                                    <Tabs.Trigger value="done">Done Kits</Tabs.Trigger>
                                                     <Tabs.Trigger value="duals">Duals</Tabs.Trigger>
                                                     <Tabs.Trigger value="members">Task Members</Tabs.Trigger>
                                                     <Tabs.Trigger value="batches">Batches</Tabs.Trigger>
@@ -839,8 +848,19 @@
                                                     {/if}
                                                 </Tabs.Content>
                                                 <Tabs.Content value="kits">
-                                                    {#if models.task.tab == 'kits'}kits
+                                                    {#if models.task.tab == 'kits'}
                                                         <Kits
+                                                            {help}
+                                                            project_id={v.id}
+                                                            task_id={vv.id}
+                                                            task_admin={vv.task_admin_bool}
+                                                            task_users={vv.members}
+                                                        />
+                                                    {/if}
+                                                </Tabs.Content>
+                                                <Tabs.Content value="done">
+                                                    {#if models.task.tab == 'done'}
+                                                        <DoneKits
                                                             {help}
                                                             project_id={v.id}
                                                             task_id={vv.id}
