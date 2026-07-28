@@ -1,5 +1,5 @@
 <script>
-    import { tick } from 'svelte';
+    import JSZip from 'jszip';
     import Modal from '../../../modal.svelte';
     import { create_transcript } from './download_transcript_helper';
     import { getp } from '../getp';
@@ -11,23 +11,23 @@
     let json;
     let include_headers = false;
     let filename;
-    let link;
     let url;
     let p = Promise.resolve({});
     function create(){
         p = getp(`/kits/all?task_id=${task_id}`).then( (data) => {
-            const t = [];
             const zip = new JSZip();
             const folder = zip.folder('transcripts');
-            let text;
+            const previews = [];
             for(let kit of data){
-                let text = create_transcript(kit.kit_uid, include_speaker, include_section, include_headers, kit.segments);
-                folder.file(`${kit.kit_uid}.tsv`, text);
+                const tsv = create_transcript(kit.kit_uid, include_speaker, include_section, include_headers, kit.segments);
+                folder.file(`${kit.kit_uid}.tsv`, tsv);
+                previews.push(`=== ${kit.kit_uid}.tsv ===\n` + tsv);
             }
-            zip.generateAsync({type: 'blob'}).then( (blob) => {
+            text = previews.join('\n');
+            if(url) URL.revokeObjectURL(url);
+            return zip.generateAsync({type: 'blob'}).then( (blob) => {
                 url = URL.createObjectURL(blob);
-                tick().then( () => link.href = url );
-            })
+            });
         });
     }
     let include_speaker = false;
@@ -60,11 +60,9 @@
                 <div>
                     {#await p}
                         <div class="mx-auto w-8 h-8"><Spinner /></div>
-                    {:then v}
-                      {JSON.stringify(v)}
                     {/await}
                     <div class="form-group">
-                        <div class="form-group-header">Filename (.tsv will be appended)</div>
+                        <div class="form-group-header">Filename (.zip will be appended)</div>
                         <div class="form-group-body">
                             <input
                                 type=text
@@ -118,7 +116,7 @@
                 <div><button class="{btn}" on:click={create}>Create</button> a transcript file, which you can preview below
                 {#if url}
                     <!-- svelte-ignore a11y-missing-attribute -->
-                    and then <a bind:this={link} download={filename}>Download</a>
+                    and then <a href={url} download={(filename || 'transcripts') + '.zip'}>Download</a>
                 {/if}
                 {#if json}
                     {#each json as x}

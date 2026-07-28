@@ -29,7 +29,7 @@ function create_transcript(kit_uid, include_speaker, include_section, include_he
       h.speaker = x.speaker;
     }
     if(include_section){
-      h.section = x.section ? x.section.name : '';
+      h.section = x.section || '';
     }
     rows.push(h);
   }

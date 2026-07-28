@@ -399,9 +399,13 @@ class KitsController < ApplicationController
       format.json do
         o = []
         task_id = params[:task_id].to_i
-        if task_id > 131
         last_uid = nil
         trs = nil
+        # Transcript rows are materialized into the segments/sections tables by DB
+        # triggers on the xodes annotation tables, so we read them directly.
+        # (This method previously routed task_id <= 131 through a recursive CTE over
+        # the legacy `nodes` table, which no longer holds data and always came back
+        # empty -- that produced empty transcript downloads.)
         q.fetch(
           "
           SELECT
@@ -429,59 +433,6 @@ class KitsController < ApplicationController
           end
           x[:end] = x[:e]
           o[-1][:segments] << x
-        end
-        else
-        q.fetch("select uid, tree_id from kits where task_id = ? and task_id is not null and state = 'done'", params[:task_id]) do |k|
-          trs = {kit_uid: k[:uid], segments: [], sections:[]}
-          tmp = {}
-          q.fetch(%{
-          WITH recursive nt(tree_id, node_id, parent_id, name, idx, lvl, node_value_id, "path") AS (
-            SELECT tree_id, id AS node_id, parent_id, name, "index", "level", node_value_id, ARRAY[id]
-            FROM nodes
-            WHERE name = 'Root' AND tree_id = ?
-            UNION ALL
-            SELECT n.tree_id, n.id AS node_id, n.parent_id, n.name, n."index", n."level", n.node_value_id, "path" || n.id
-            FROM nodes n, nt t
-            WHERE n.parent_id = t.node_id and current = 't'
-          )
-          SELECT nt.name, idx, v.docid, v.begr, v.endr, v.value
-          FROM nt, node_values v
-          WHERE nt.node_value_id = v.id
-          ORDER BY PATH }, k[:tree_id]) do |n|
-            case n[:name]
-            when "SectionList"
-              trs[:segments] << tmp
-              tmp = {}
-            when "SegmentListItem"
-              unless tmp.empty?
-                trs[:segments] << tmp
-              end
-              tmp = {}
-            when "SectionListItem"
-              unless tmp.empty?
-                trs[:sections] << tmp
-              end
-              tmp = {}
-            when "Segment"
-              tmp[:docid] = n[:docid]
-              tmp[:beg] = n[:begr]
-              tmp[:end] = n[:endr]
-            when "Transcription"
-              tmp[:text] = n[:value]
-            when "Speaker"
-              tmp[:speaker] = n[:value]
-            when "Section"
-              tmp[:label] = n[:value]
-            when "BegSeg"
-              tmp[:beg_seg] = n[:value]
-            when "EndSeg"
-              tmp[:end_seg] = n[:value]
-            end
-          end
-          # this is awful
-          trs[:segments].sort!{|a,b| a[:beg] <=> b[:beg] }
-          o << trs
-        end
         end
         render json: o
       end
