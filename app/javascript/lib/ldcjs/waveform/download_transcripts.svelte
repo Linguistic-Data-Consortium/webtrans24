@@ -218,7 +218,7 @@
         if(kit_report.length){
             lines.push('', 'kits:');
             for(const k of kit_report){
-                lines.push(`  ${k.uid} state=${k.state} tree_id=${k.tree_id} segment_rows=${k.segment_rows} returned=${k.segments_returned} included=${k.included}${k.note ? ' -- ' + k.note : ''}`);
+                lines.push(`  ${k.uid} state=${k.state} tree_id=${k.tree_id} annotation_nodes=${k.annotation_nodes} segment_rows=${k.segment_rows} returned=${k.segments_returned} included=${k.included}${k.note ? ' -- ' + k.note : ''}`);
             }
         }
         return lines.join('\n');
@@ -351,7 +351,7 @@
                     <div>
                         {#each kit_report as k}
                             <div class="step {k.included ? 'ok' : 'fail'}">
-                                {k.uid} — state {k.state}, tree_id {k.tree_id}, {k.segment_rows} segment row(s) in db, {k.segments_returned} returned{k.note ? ' — ' + k.note : ''}
+                                {k.uid} — state {k.state}, tree_id {k.tree_id}, {k.annotation_nodes} annotation node(s), {k.segment_rows} segment row(s) in db, {k.segments_returned} returned{k.note ? ' — ' + k.note : ''}
                             </div>
                         {/each}
                     </div>

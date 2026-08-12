@@ -428,7 +428,7 @@ class KitsController < ApplicationController
 
           diag_step(steps, 'required tables exist') do
             present = {}
-            %w[kits segments sections].each { |t| present[t] = q.table_exists?(t.to_sym) }
+            %w[kits trees xodes segments sections].each { |t| present[t] = q.table_exists?(t.to_sym) }
             missing = present.reject { |_, v| v }.keys
             if missing.any?
               raise "required table(s) missing from this database: #{missing.join(', ')}. " \
@@ -471,6 +471,29 @@ class KitsController < ApplicationController
               kits_without_segments: done_kits.length - seg_counts.length,
               total_segment_rows: seg_counts.values.sum,
               total_section_rows: sec_counts.values.sum
+            }
+          end
+
+          # A kit with no rows in segments is ambiguous on its own: it was either never
+          # annotated, or it was annotated and the materialization triggers never ran.
+          # Counting the annotation nodes themselves tells the two apart.
+          xode_counts = {}
+          missing_trees = []
+          diag_step(steps, 'check annotation source') do
+            if tree_ids.any?
+              ids = tree_ids.join(',')
+              q.fetch("select tree_id, count(*) as n from xodes where tree_id in (#{ids}) group by tree_id").each do |r|
+                xode_counts[r[:tree_id].to_i] = r[:n].to_i
+              end
+              found = q.fetch("select id from trees where id in (#{ids})").map { |r| r[:id].to_i }
+              missing_trees = tree_ids - found
+            end
+            {
+              trees_checked: tree_ids.length,
+              trees_with_no_annotation_nodes: tree_ids.count { |t| (xode_counts[t] || 0) == 0 },
+              trees_annotated_but_not_materialized:
+                tree_ids.select { |t| (xode_counts[t] || 0) > 0 && (seg_counts[t] || 0) == 0 },
+              dangling_tree_ids: missing_trees
             }
           end
 
@@ -539,18 +562,26 @@ class KitsController < ApplicationController
           by_uid = o.each_with_object({}) { |k, h| h[k[:kit_uid]] = k }
           kit_rows.each do |k|
             out = by_uid[k[:uid]]
+            tid = k[:tree_id]&.to_i
+            nodes = tid ? (xode_counts[tid] || 0) : 0
             reason =
               if k[:state] != 'done' then "excluded: state is '#{k[:state]}', only 'done' kits are downloaded"
-              elsif k[:tree_id].nil? then 'excluded: kit has no tree_id'
+              elsif tid.nil? then 'excluded: kit has no tree_id'
+              elsif missing_trees.include?(tid) then "broken: tree_id #{tid} has no row in the trees table"
               elsif out.nil? then 'missing from result: kit is done but produced no rows'
-              elsif out[:segments].empty? then 'included but empty: no segment rows for this tree'
+              elsif out[:segments].empty? && nodes.zero?
+                'empty: this tree has no annotation nodes at all, the kit was never annotated'
+              elsif out[:segments].empty?
+                "empty: tree has #{nodes} annotation node(s) but no rows in segments -- " \
+                'the materialization triggers never ran for this kit'
               end
             kit_report << {
               uid: k[:uid],
               state: k[:state],
               tree_id: k[:tree_id],
-              segment_rows: k[:tree_id] ? (seg_counts[k[:tree_id].to_i] || 0) : 0,
-              section_rows: k[:tree_id] ? (sec_counts[k[:tree_id].to_i] || 0) : 0,
+              annotation_nodes: nodes,
+              segment_rows: tid ? (seg_counts[tid] || 0) : 0,
+              section_rows: tid ? (sec_counts[tid] || 0) : 0,
               segments_returned: out ? out[:segments].length : 0,
               included: !out.nil? && !out[:segments].empty?,
               note: reason
