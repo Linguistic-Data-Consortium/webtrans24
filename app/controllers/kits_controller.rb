@@ -2,6 +2,10 @@ class KitsController < ApplicationController
 
   require 'date'
 
+  # Reported to the browser by #all so the end user can confirm which build of the
+  # transcript download endpoint is actually deployed. Bump on every change to #all.
+  KITS_ALL_VERSION = '2026-08-12-diagnostics'
+
   include NodesHelper
   include WorkflowsHelper
 
@@ -393,52 +397,205 @@ class KitsController < ApplicationController
     end
   end
 
+  # Feeds the "Download Transcripts" dialog in the kits view.
+  #
+  # Every step is recorded in `diagnostics` and returned to the browser, because
+  # the end user has no access to the rails log. The payload is
+  #   { kits: [ {kit_uid:, segments: []}, ... ], diagnostics: {...} }
+  # and on failure the same shape with an `error` key and a 500 status, so the
+  # front end can always show where things stopped.
   def all
     q = $sequel_rails
     respond_to do |format|
       format.json do
+        t_start = Time.now
+        steps = []
+        kit_report = []
         o = []
         task_id = params[:task_id].to_i
-        last_uid = nil
-        trs = nil
-        # Transcript rows are materialized into the segments/sections tables by DB
-        # triggers on the xodes annotation tables, so we read them directly.
-        # (This method previously routed task_id <= 131 through a recursive CTE over
-        # the legacy `nodes` table, which no longer holds data and always came back
-        # empty -- that produced empty transcript downloads.)
-        q.fetch(
-          "
-          SELECT
-            kits.uid,
-            kits.source_uid as docid,
-            kits.done_comment,
-            segments.iid,
-            segments.btime as beg,
-            segments.etime as e, -- not sure if end is allowed here
-            segments.text,
-            segments.speaker,
-            sections.name as section
-          FROM kits
-          LEFT JOIN segments ON segments.tree_id = kits.tree_id
-          LEFT JOIN sections ON sections.tree_id = kits.tree_id
-            AND segments.btime >= sections.btime AND segments.etime <= sections.etime
-          WHERE kits.task_id = #{task_id} and kits.state = 'done'
-          ORDER BY uid, beg, iid
-          "
-        ).each do |x|
-          if x[:uid] != last_uid
-            trs = {kit_uid: x[:uid], segments: []}
-            o << trs
-            last_uid = x[:uid]
+        begin
+          diag_step(steps, 'parse params') do
+            unless task_id > 0
+              raise ArgumentError, "task_id is missing or not a positive integer (got #{params[:task_id].inspect})"
+            end
+            { task_id: task_id, user_id: current_user&.id, format: request.format.to_s }
           end
-          x[:end] = x[:e]
-          o[-1][:segments] << x
+
+          diag_step(steps, 'database connection') do
+            raise 'global $sequel_rails is not set -- the Sequel connection was never initialized for this environment' unless q
+            { adapter: q.database_type.to_s, test: q.test_connection }
+          end
+
+          diag_step(steps, 'required tables exist') do
+            present = {}
+            %w[kits segments sections].each { |t| present[t] = q.table_exists?(t.to_sym) }
+            missing = present.reject { |_, v| v }.keys
+            if missing.any?
+              raise "required table(s) missing from this database: #{missing.join(', ')}. " \
+                    'Transcript rows are materialized into segments/sections by DB triggers on the xodes ' \
+                    'tables; those tables have no migration, so a schema:load / fresh database will not have them.'
+            end
+            present
+          end
+
+          kit_rows = nil
+          diag_step(steps, 'find kits for task') do
+            kit_rows = q.fetch('select id, uid, state, tree_id from kits where task_id = ? order by uid', task_id).all
+            raise "no kits at all belong to task_id #{task_id}" if kit_rows.empty?
+            {
+              total: kit_rows.length,
+              by_state: kit_rows.group_by { |r| r[:state] }.transform_values(&:size),
+              done: kit_rows.count { |r| r[:state] == 'done' },
+              done_without_tree_id: kit_rows.count { |r| r[:state] == 'done' && r[:tree_id].nil? }
+            }
+          end
+
+          done_kits = kit_rows.select { |r| r[:state] == 'done' }
+          tree_ids = done_kits.map { |r| r[:tree_id] }.compact.map(&:to_i)
+
+          seg_counts = {}
+          sec_counts = {}
+          diag_step(steps, 'count source rows per kit') do
+            if tree_ids.any?
+              ids = tree_ids.join(',')
+              q.fetch("select tree_id, count(*) as n from segments where tree_id in (#{ids}) group by tree_id").each do |r|
+                seg_counts[r[:tree_id].to_i] = r[:n].to_i
+              end
+              q.fetch("select tree_id, count(*) as n from sections where tree_id in (#{ids}) group by tree_id").each do |r|
+                sec_counts[r[:tree_id].to_i] = r[:n].to_i
+              end
+            end
+            {
+              done_kits: done_kits.length,
+              kits_with_segments: seg_counts.length,
+              kits_without_segments: done_kits.length - seg_counts.length,
+              total_segment_rows: seg_counts.values.sum,
+              total_section_rows: sec_counts.values.sum
+            }
+          end
+
+          rows = nil
+          diag_step(steps, 'main transcript query') do
+            # Transcript rows are materialized into the segments/sections tables by DB
+            # triggers on the xodes annotation tables, so we read them directly.
+            # (This method previously routed task_id <= 131 through a recursive CTE over
+            # the legacy `nodes` table, which no longer holds data and always came back
+            # empty -- that produced empty transcript downloads.)
+            rows = q.fetch(
+              "
+              SELECT
+                kits.uid,
+                kits.source_uid as docid,
+                kits.done_comment,
+                segments.iid,
+                segments.btime as beg,
+                segments.etime as e, -- not sure if end is allowed here
+                segments.text,
+                segments.speaker,
+                sections.name as section
+              FROM kits
+              LEFT JOIN segments ON segments.tree_id = kits.tree_id
+              LEFT JOIN sections ON sections.tree_id = kits.tree_id
+                AND segments.btime >= sections.btime AND segments.etime <= sections.etime
+              WHERE kits.task_id = #{task_id} and kits.state = 'done'
+              ORDER BY uid, beg, iid
+              "
+            ).all
+            { rows: rows.length, kits_in_result: rows.map { |r| r[:uid] }.uniq.length }
+          end
+
+          diag_step(steps, 'assemble json') do
+            last_uid = nil
+            trs = nil
+            seen_iids = nil
+            empty_rows = 0
+            duplicate_rows = 0
+            rows.each do |x|
+              if x[:uid] != last_uid
+                trs = { kit_uid: x[:uid], segments: [] }
+                o << trs
+                last_uid = x[:uid]
+                seen_iids = {}
+              end
+              # A kit whose tree has no segments still comes back from the LEFT JOIN as a
+              # single all-null row; keep it out of the transcript but count it.
+              if x[:iid].nil?
+                empty_rows += 1
+                next
+              end
+              # Overlapping sections can match the same segment more than once.
+              if seen_iids[x[:iid]]
+                duplicate_rows += 1
+                next
+              end
+              seen_iids[x[:iid]] = true
+              x[:end] = x[:e]
+              trs[:segments] << x
+            end
+            { kits: o.length, placeholder_rows_skipped: empty_rows, duplicate_rows_skipped: duplicate_rows }
+          end
+
+          # Per-kit accounting so the dialog can say exactly which kit came back short.
+          by_uid = o.each_with_object({}) { |k, h| h[k[:kit_uid]] = k }
+          kit_rows.each do |k|
+            out = by_uid[k[:uid]]
+            reason =
+              if k[:state] != 'done' then "excluded: state is '#{k[:state]}', only 'done' kits are downloaded"
+              elsif k[:tree_id].nil? then 'excluded: kit has no tree_id'
+              elsif out.nil? then 'missing from result: kit is done but produced no rows'
+              elsif out[:segments].empty? then 'included but empty: no segment rows for this tree'
+              end
+            kit_report << {
+              uid: k[:uid],
+              state: k[:state],
+              tree_id: k[:tree_id],
+              segment_rows: k[:tree_id] ? (seg_counts[k[:tree_id].to_i] || 0) : 0,
+              section_rows: k[:tree_id] ? (sec_counts[k[:tree_id].to_i] || 0) : 0,
+              segments_returned: out ? out[:segments].length : 0,
+              included: !out.nil? && !out[:segments].empty?,
+              note: reason
+            }
+          end
+
+          Rails.logger.info("[kits#all] task_id=#{task_id} ok kits=#{o.length} #{kit_report.count { |k| !k[:included] }} problem kit(s)")
+          payload = { kits: o }
+          status = :ok
+        rescue StandardError => e
+          Rails.logger.error("[kits#all] task_id=#{task_id} FAILED #{e.class}: #{e.message}\n#{Array(e.backtrace).first(10).join("\n")}")
+          payload = { kits: [], error: { class: e.class.name, message: e.message, backtrace: Array(e.backtrace).first(8) } }
+          status = :internal_server_error
         end
-        render json: o
+        payload[:diagnostics] = {
+          # Bump when this action changes; lets the dialog prove which build is deployed.
+          endpoint_version: KITS_ALL_VERSION,
+          task_id: task_id,
+          generated_at: t_start.utc.iso8601,
+          total_ms: ((Time.now - t_start) * 1000).round(1),
+          steps: steps,
+          kits: kit_report
+        }
+        render json: payload, status: status
       end
     end
   end
   private
+
+  # Runs one labelled step, timing it and recording success or failure into `steps`
+  # (which is shipped to the browser) as well as the rails log.
+  def diag_step(steps, name)
+    t0 = Time.now
+    detail = yield
+    steps << { step: name, ok: true, ms: ((Time.now - t0) * 1000).round(1), detail: detail }
+    Rails.logger.info("[kits#all] ok   #{name} (#{((Time.now - t0) * 1000).round(1)}ms) #{detail.inspect}")
+    detail
+  rescue StandardError => e
+    steps << {
+      step: name, ok: false, ms: ((Time.now - t0) * 1000).round(1),
+      error: e.class.name, message: e.message
+    }
+    Rails.logger.error("[kits#all] FAIL #{name}: #{e.class}: #{e.message}")
+    raise
+  end
 
   def kit_params
     params.require(:kit).permit(:meta, :user_id, :task_id, :kit_type_id, :uid, :state, :source, :broken_comment, :tree_id, :kit_batch_id, :not_user_id, :time_spent)
