@@ -3,7 +3,7 @@
   %head
     %title= full_title(@title)
     :javascript
-      console.log('test9')
+      console.log('test10')
     :javascript
       var Guide = {route: #{raw Rails.application.routes.recognize_path(request.url,method: request.env["REQUEST_METHOD"]).to_json}};
     -# = javascript_include_tag "application" #, 'data-turbolinks-track': 'reload'
