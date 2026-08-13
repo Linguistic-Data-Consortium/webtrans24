@@ -17,11 +17,20 @@
     const TAG = '[download-transcripts]';
     // Bump on every change to this component. Reported below next to the server's own
     // version so a stale javascript bundle is obvious rather than mysterious.
-    const BUILD = '2026-08-12-diagnostics';
+    const BUILD = '2026-08-13-batching';
     let steps = [];
     let kit_report = [];
     let raw_diagnostics = null;
     let copied = false;
+    // Kits are fetched and zipped a batch at a time: a whole task at once can be more
+    // than the browser can hold, and it is the failure mode we are chasing.
+    const MAX_BATCH = 200;
+    const PREVIEW_LINES = 400;
+    let batch_size = 25;
+    let offset = 0;
+    let batch = null;
+    let batch_no = 0;
+    let preview_truncated = false;
 
     function begin(name, detail){
         const s = { name, state: 'run', detail: detail || '', ms: null, t0: performance.now() };
@@ -46,17 +55,27 @@
         return one.length > n ? one.slice(0, n) + ' ...' : one;
     }
 
-    async function create(){
+    // start_offset 0 starts over at the first kit; next_batch() continues where the
+    // previous one stopped. One batch is fetched, zipped and handed over at a time, so
+    // the browser never holds more than batch_size transcripts.
+    async function create(start_offset = 0){
         if(running) return;
         running = true;
+        offset = start_offset;
+        batch_no = start_offset === 0 ? 1 : batch_no + 1;
         steps = [];
         kit_report = [];
         raw_diagnostics = null;
+        batch = null;
         copied = false;
         text = '';
+        preview_truncated = false;
+        // Release the previous batch's zip before building the next one.
         if(url){ URL.revokeObjectURL(url); url = null; }
-        const request_url = `/kits/all?task_id=${task_id}`;
-        note('front end build', 'ok', `${BUILD} (task_id ${task_id})`);
+        const size = Math.max(1, Math.min(MAX_BATCH, Number(batch_size) || 1));
+        const request_url = `/kits/all?task_id=${task_id}&limit=${size}&offset=${offset}`;
+        note('front end build', 'ok',
+            `${BUILD} (task_id ${task_id}, batch ${batch_no}: up to ${size} kit(s) from offset ${offset})`);
         try {
             // 1. headers -- a missing csrf meta tag used to throw before the fetch even started
             let headers;
@@ -122,8 +141,16 @@
             } else {
                 data = payload.kits || [];
                 raw_diagnostics = payload.diagnostics || null;
+                batch = payload.batch || null;
                 if(raw_diagnostics){
                     note('server build', 'ok', raw_diagnostics.endpoint_version || '(older build, no version reported)');
+                }
+                if(batch && batch.total_done_kits != null){
+                    note('batch', 'ok',
+                        `kits ${batch.offset + 1}-${batch.offset + batch.returned} of ${batch.total_done_kits} done kit(s)` +
+                        (batch.has_more ? ` -- ${batch.total_done_kits - batch.next_offset} still to go` : ' -- last batch'));
+                } else if(!Array.isArray(payload)){
+                    note('batch', 'warn', 'the server ignored limit/offset -- it is running an older build, so this is the whole task at once');
                 }
                 if(raw_diagnostics && raw_diagnostics.steps){
                     for(const s of raw_diagnostics.steps){
@@ -148,7 +175,11 @@
             }
             finish(s_shape, data.length ? 'ok' : 'fail',
                 `${data.length} kit(s): ` + (data.map(k => `${k.kit_uid} (${(k.segments || []).length} segments)`).join(', ') || 'none'));
-            if(!data.length) throw new Error('the server returned no kits for this task');
+            if(!data.length){
+                throw new Error(offset > 0
+                    ? `the server returned no kits at offset ${offset}`
+                    : 'the server returned no kits for this task');
+            }
 
             const problems = kit_report.filter(k => !k.included);
             if(problems.length){
@@ -160,6 +191,7 @@
             const zip = new JSZip();
             const folder = zip.folder('transcripts');
             const previews = [];
+            let preview_lines = 0;
             let files = 0;
             for(const kit of data){
                 const s_kit = begin(`transcript ${kit.kit_uid}`);
@@ -168,8 +200,15 @@
                     const tsv = create_transcript(kit.kit_uid, include_speaker, include_section, include_headers, segs);
                     folder.file(`${kit.kit_uid}.tsv`, tsv);
                     files++;
-                    previews.push(`=== ${kit.kit_uid}.tsv ===\n` + tsv);
                     const lines = tsv.split('\n').filter(l => l.length).length;
+                    // The zip gets everything; the on screen preview is capped, because a
+                    // few thousand lines of <pre> costs more memory than the data does.
+                    if(preview_lines < PREVIEW_LINES){
+                        previews.push(`=== ${kit.kit_uid}.tsv ===\n` + tsv);
+                        preview_lines += lines;
+                    } else {
+                        preview_truncated = true;
+                    }
                     finish(s_kit, segs.length ? 'ok' : 'warn',
                         `${segs.length} segments -> ${lines} line(s), ${tsv.length} bytes` +
                         (segs.length ? '' : ' -- nothing to write for this kit'));
@@ -196,7 +235,8 @@
             const s_url = begin('create download link');
             try {
                 url = URL.createObjectURL(blob);
-                finish(s_url, 'ok', 'ready -- use the Download link above');
+                finish(s_url, 'ok', 'ready -- use the Download link above' +
+                    (batch && batch.has_more ? ', then Next batch for the rest' : ''));
             } catch(e){
                 finish(s_url, 'fail', e.message);
                 throw e;
@@ -209,9 +249,22 @@
         }
     }
 
+    function next_batch(){
+        if(batch && batch.has_more) create(batch.next_offset);
+    }
+    // Each batch is its own zip, so the name has to carry the batch number or the
+    // second download quietly overwrites the first.
+    function zip_name(){
+        const base = filename || 'transcripts';
+        const multi = batch_no > 1 || (batch && batch.has_more);
+        return multi ? `${base}-${batch_no}.zip` : `${base}.zip`;
+    }
+
     function report_text(){
         const lines = [
             `download transcripts diagnostics -- task_id ${task_id}`,
+            `batch ${batch_no}, offset ${offset}, size ${batch_size}` +
+                (batch ? ` (returned ${batch.returned} of ${batch.total_done_kits} done kits)` : ''),
             `page ${location.href}`,
             ...steps.map(s => `[${s.state}] ${s.name}${s.ms == null ? '' : ` (${s.ms}ms)`}${s.detail ? ' -- ' + s.detail : ''}`)
         ];
@@ -283,6 +336,19 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <div class="form-group-header">Kits per batch (1–{MAX_BATCH})</div>
+                        <div class="form-group-body">
+                            <input
+                                type=number
+                                min=1
+                                max={MAX_BATCH}
+                                class="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-md border-gray-300"
+                                bind:value={batch_size}
+                            />
+                            <div class="step run">Large tasks are downloaded a batch at a time, one zip per batch. Lower this if the browser runs out of memory.</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <div class="form-group-header">
                             <label>
                                 <input
@@ -324,10 +390,20 @@
                 {:else if text}
                     <button class="{btn}" on:click={download}>download</button>
                 {/if} -->
-                <div><button class="{btn}" on:click={create} disabled={running}>Create</button> a transcript file, which you can preview below
+                <div><button class="{btn}" on:click={() => create(0)} disabled={running}>Create</button> a transcript file, which you can preview below
                 {#if url}
                     <!-- svelte-ignore a11y-missing-attribute -->
-                    and then <a href={url} download={(filename || 'transcripts') + '.zip'}>Download</a>
+                    and then <a href={url} download={zip_name()}>Download {zip_name()}</a>
+                {/if}
+                <!-- Only offer the next batch once this one actually produced a zip, so a
+                     failed batch cannot be skipped over silently. -->
+                {#if url && batch && batch.has_more}
+                    <div class="mt-2">
+                        <button class="{btn}" on:click={next_batch} disabled={running}>Next batch</button>
+                        <span class="step warn">Download this batch first — creating the next one replaces it. {batch.total_done_kits - batch.next_offset} kit(s) remaining.</span>
+                    </div>
+                {:else if url && batch && batch_no > 1}
+                    <div class="mt-2"><span class="step ok">Last batch — all {batch.total_done_kits} kit(s) have been downloaded across {batch_no} zip file(s).</span></div>
                 {/if}
 
                 {#if steps.length}
@@ -370,6 +446,9 @@
                     {/each}
                 {:else if text}
                     <h4>Preview</h4>
+                    {#if preview_truncated}
+                        <div class="step warn">Preview stops after about {PREVIEW_LINES} lines; the zip still contains every kit in this batch.</div>
+                    {/if}
                     <pre>{text}</pre>
                 {/if}
             </div>

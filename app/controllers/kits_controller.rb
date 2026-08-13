@@ -4,7 +4,11 @@ class KitsController < ApplicationController
 
   # Reported to the browser by #all so the end user can confirm which build of the
   # transcript download endpoint is actually deployed. Bump on every change to #all.
-  KITS_ALL_VERSION = '2026-08-12-diagnostics'
+  KITS_ALL_VERSION = '2026-08-13-batching'
+
+  # Ceiling on kits per request, whatever the dialog asks for. One request holds every
+  # segment of every kit in the batch in memory, twice over once it is serialized.
+  MAX_TRANSCRIPT_BATCH = 200
 
   include NodesHelper
   include WorkflowsHelper
@@ -401,9 +405,14 @@ class KitsController < ApplicationController
   #
   # Every step is recorded in `diagnostics` and returned to the browser, because
   # the end user has no access to the rails log. The payload is
-  #   { kits: [ {kit_uid:, segments: []}, ... ], diagnostics: {...} }
+  #   { kits: [ {kit_uid:, segments: []}, ... ], batch: {...}, diagnostics: {...} }
   # and on failure the same shape with an `error` key and a 500 status, so the
   # front end can always show where things stopped.
+  #
+  # A whole task's transcripts can be far too much to hold in memory at once --
+  # here, in the json response, and in the browser building the zip -- so the kits
+  # are served in batches: `limit` kits starting at `offset`, both counted over the
+  # task's done kits in uid order. limit <= 0 means "all of them".
   def all
     q = $sequel_rails
     respond_to do |format|
@@ -413,12 +422,20 @@ class KitsController < ApplicationController
         kit_report = []
         o = []
         task_id = params[:task_id].to_i
+        limit = params[:limit].to_i
+        offset = params[:offset].to_i
+        offset = 0 if offset < 0
+        limit = MAX_TRANSCRIPT_BATCH if limit > MAX_TRANSCRIPT_BATCH
+        batch = {}
         begin
           diag_step(steps, 'parse params') do
             unless task_id > 0
               raise ArgumentError, "task_id is missing or not a positive integer (got #{params[:task_id].inspect})"
             end
-            { task_id: task_id, user_id: current_user&.id, format: request.format.to_s }
+            {
+              task_id: task_id, user_id: current_user&.id, format: request.format.to_s,
+              limit: limit > 0 ? limit : 'none (all kits)', offset: offset
+            }
           end
 
           diag_step(steps, 'database connection') do
@@ -450,8 +467,26 @@ class KitsController < ApplicationController
             }
           end
 
-          done_kits = kit_rows.select { |r| r[:state] == 'done' }
+          all_done_kits = kit_rows.select { |r| r[:state] == 'done' }
+          # Only this slice is queried, assembled and rendered; everything below works
+          # off `done_kits` so the memory cost of a request is bounded by the batch size.
+          done_kits = limit > 0 ? (all_done_kits[offset, limit] || []) : all_done_kits.drop(offset)
           tree_ids = done_kits.map { |r| r[:tree_id] }.compact.map(&:to_i)
+
+          diag_step(steps, 'select batch') do
+            batch = {
+              limit: limit > 0 ? limit : nil,
+              offset: offset,
+              returned: done_kits.length,
+              total_done_kits: all_done_kits.length,
+              next_offset: offset + done_kits.length,
+              has_more: (offset + done_kits.length) < all_done_kits.length
+            }
+            if done_kits.empty? && all_done_kits.any?
+              raise "offset #{offset} is past the end of the #{all_done_kits.length} done kit(s) in this task"
+            end
+            batch
+          end
 
           seg_counts = {}
           sec_counts = {}
@@ -497,33 +532,36 @@ class KitsController < ApplicationController
             }
           end
 
-          rows = nil
+          rows = []
           diag_step(steps, 'main transcript query') do
             # Transcript rows are materialized into the segments/sections tables by DB
             # triggers on the xodes annotation tables, so we read them directly.
             # (This method previously routed task_id <= 131 through a recursive CTE over
             # the legacy `nodes` table, which no longer holds data and always came back
             # empty -- that produced empty transcript downloads.)
-            rows = q.fetch(
-              "
-              SELECT
-                kits.uid,
-                kits.source_uid as docid,
-                kits.done_comment,
-                segments.iid,
-                segments.btime as beg,
-                segments.etime as e, -- not sure if end is allowed here
-                segments.text,
-                segments.speaker,
-                sections.name as section
-              FROM kits
-              LEFT JOIN segments ON segments.tree_id = kits.tree_id
-              LEFT JOIN sections ON sections.tree_id = kits.tree_id
-                AND segments.btime >= sections.btime AND segments.etime <= sections.etime
-              WHERE kits.task_id = #{task_id} and kits.state = 'done'
-              ORDER BY uid, beg, iid
-              "
-            ).all
+            batch_ids = done_kits.map { |k| k[:id].to_i }
+            if batch_ids.any?
+              rows = q.fetch(
+                "
+                SELECT
+                  kits.uid,
+                  kits.source_uid as docid,
+                  kits.done_comment,
+                  segments.iid,
+                  segments.btime as beg,
+                  segments.etime as e, -- not sure if end is allowed here
+                  segments.text,
+                  segments.speaker,
+                  sections.name as section
+                FROM kits
+                LEFT JOIN segments ON segments.tree_id = kits.tree_id
+                LEFT JOIN sections ON sections.tree_id = kits.tree_id
+                  AND segments.btime >= sections.btime AND segments.etime <= sections.etime
+                WHERE kits.id in (#{batch_ids.join(',')})
+                ORDER BY uid, beg, iid
+                "
+              ).all
+            end
             { rows: rows.length, kits_in_result: rows.map { |r| r[:uid] }.uniq.length }
           end
 
@@ -560,7 +598,10 @@ class KitsController < ApplicationController
 
           # Per-kit accounting so the dialog can say exactly which kit came back short.
           by_uid = o.each_with_object({}) { |k, h| h[k[:kit_uid]] = k }
-          kit_rows.each do |k|
+          # The kits in this batch, plus -- on the first batch only, so it isn't repeated --
+          # the kits that no batch will ever contain, with the reason they were skipped.
+          reported = done_kits + (offset.zero? ? kit_rows.reject { |r| r[:state] == 'done' } : [])
+          reported.each do |k|
             out = by_uid[k[:uid]]
             tid = k[:tree_id]&.to_i
             nodes = tid ? (xode_counts[tid] || 0) : 0
@@ -588,7 +629,7 @@ class KitsController < ApplicationController
             }
           end
 
-          Rails.logger.info("[kits#all] task_id=#{task_id} ok kits=#{o.length} #{kit_report.count { |k| !k[:included] }} problem kit(s)")
+          Rails.logger.info("[kits#all] task_id=#{task_id} ok kits=#{o.length} of #{batch[:total_done_kits]} (offset #{offset}) #{kit_report.count { |k| !k[:included] }} problem kit(s)")
           payload = { kits: o }
           status = :ok
         rescue StandardError => e
@@ -596,6 +637,7 @@ class KitsController < ApplicationController
           payload = { kits: [], error: { class: e.class.name, message: e.message, backtrace: Array(e.backtrace).first(8) } }
           status = :internal_server_error
         end
+        payload[:batch] = batch
         payload[:diagnostics] = {
           # Bump when this action changes; lets the dialog prove which build is deployed.
           endpoint_version: KITS_ALL_VERSION,
