@@ -43,9 +43,17 @@ class Workflow < ApplicationRecord
   # attr_accessible :name, :user_states, :description, :type
   has_many :tasks
 
+  # the two basic workflows handled by this class itself, in the order they're offered
+  BASIC_NAMES = [ 'OnTheFly', 'Orderly' ]
+
   scope :all_newest_first, -> { order('created_at DESC') }
 
   scope :sorted, -> { order('name ASC') }
+
+  # the basic workflows, in BASIC_NAMES order
+  def self.basic
+    where( name: BASIC_NAMES ).sort_by { |x| BASIC_NAMES.index(x.name) }
+  end
 
   include NodesHelper
 

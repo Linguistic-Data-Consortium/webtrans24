@@ -17,6 +17,7 @@
     import InputSelect from './input_select.svelte';
     import InputCheckbox from './input_checkbox.svelte';
     import Kits from './kits.svelte';
+    import ChangeWorkflow from './change_workflow.svelte';
     import DoneKits from './done_kits.svelte';
     import { controller_actions } from './controllers';
     import { toast } from "svelte-sonner";
@@ -379,6 +380,7 @@
 </div>
 
 <button class="{btn} bg-blue-200 float-right" onclick={() => help = !help}>Help</button>
+<div class="float-right mr-2"><ChangeWorkflow /></div>
 
 {#snippet dialog_create(model)}
     <Dialog.Root>

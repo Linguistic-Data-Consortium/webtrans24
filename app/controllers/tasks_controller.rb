@@ -123,6 +123,54 @@ class TasksController < ApplicationController
     end
   end
 
+  # tasks and the basic workflow choices, for the change workflow dialog on the dashboard
+  # available to any authenticated user
+  def workflow_options
+    respond_to do |format|
+      format.json do
+        render json: {
+          tasks: Task.includes(:project, :workflow).references(:project).order('projects.name ASC, tasks.name ASC').map { |x|
+            {
+              id: x.id,
+              name: x.name,
+              project: x.project&.name,
+              workflow_id: x.workflow_id,
+              workflow: x.workflow&.name
+            }
+          },
+          workflows: Workflow.basic.map { |x| { id: x.id, name: x.name } }
+        }
+      end
+    end
+  end
+
+  # change a task's workflow to one of the basic workflows
+  # available to any authenticated user
+  def update_workflow
+    respond_to do |format|
+      format.json do
+        render json: (
+          task = Task.find_by( id: params[:id] )
+          workflow = Workflow.where( name: Workflow::BASIC_NAMES ).find_by( id: params[:workflow_id] )
+          if task.nil?
+            { error: [ "Task #{params[:id]} was not found." ] }
+          elsif workflow.nil?
+            { error: [ "Workflow must be one of: #{Workflow::BASIC_NAMES.join(', ')}." ] }
+          elsif task.update( workflow_id: workflow.id )
+            {
+              ok: "Task #{task.name} now uses the #{workflow.name} workflow.",
+              id: task.id,
+              workflow_id: workflow.id,
+              workflow: workflow.name
+            }
+          else
+            { error: task.errors.full_messages }
+          end
+        )
+      end
+    end
+  end
+
   def create
     respond_to do |format|
       format.json do

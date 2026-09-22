@@ -41,6 +41,8 @@ Rails.application.routes.draw do
   get 'tasks/:id/task_users', to: 'tasks#task_users', :as => 'task_task_users'
   post 'tasks/respond_with_task', :to => 'tasks#respond_with_task'
   get 'tasks/recreate', :to => 'tasks#recreate'
+  get 'tasks/workflow_options', :to => 'tasks#workflow_options'
+  patch 'tasks/:id/workflow', :to => 'tasks#update_workflow', :as => 'task_workflow'
   post 'data_sets/respond_with_dataset', :to => 'data_sets#respond_with_dataset'
 
   post 'add_user_to_project_and_task/:project_id/:task_id', :to => 'projects#add_user_to_project_and_task', :as => 'add_user_to_project_and_task'
