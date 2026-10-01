@@ -25,6 +25,7 @@
     let { admin = false, portal_manager = false, project_manager = false } = $props();
     let lead_annotator = $state(project_manager);
     let help = $state(false);
+    let cw_open = $state(false);
     // let page = 1;
     // function pagef(e){ page = e.detail }
     // let pages = [
@@ -379,8 +380,8 @@
     {/if}
 </div>
 
-<button class="{btn} bg-blue-200 float-right" onclick={() => help = !help}>Help</button>
-<div class="float-right mr-2"><ChangeWorkflow /></div>
+<button class="{btn} bg-blue-200 float-right" onclick={() => { help = !help; cw_open = true; }}>CW</button>
+<div class="float-right mr-2"><ChangeWorkflow bind:open={cw_open} /></div>
 
 {#snippet dialog_create(model)}
     <Dialog.Root>

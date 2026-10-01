@@ -8,7 +8,8 @@
     import { toast } from "svelte-sonner";
     import Spinner from './spinner.svelte';
 
-    let open = $state(false);
+    // bindable so another button can open this same dialog
+    let { open = $bindable(false) } = $props();
     let p = $state(Promise.resolve({ tasks: [], workflows: [] }));
     let filter = $state('');
     let task_id = $state('');
@@ -16,6 +17,8 @@
     let saving = $state(false);
 
     // reload every time the dialog opens so the current workflows are accurate
+    // use a named function so the effect only binds to open
+    $effect(() => opened(open));
     function opened(x){
         if(!x) return;
         filter = '';
@@ -50,7 +53,7 @@
     }
 </script>
 
-<Dialog.Root bind:open onOpenChange={opened}>
+<Dialog.Root bind:open>
     <Dialog.Trigger class={buttonVariants({ variant: "secondary" })}>Change Workflow</Dialog.Trigger>
     <Dialog.Content>
         <Dialog.Header>
